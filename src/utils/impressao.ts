@@ -22,7 +22,7 @@ export class GerenciadorImpressao {
 
     // Impressão via servidor local CUPS/Diebold
 try {
-  const resposta = await fetch("http://localhost:3001/imprimir", {
+  const resposta = await fetch("http://192.168.0.54:3001/imprimir", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
