@@ -1,17 +1,34 @@
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
-import { ChefHat, Printer, Settings, Eye } from 'lucide-react';
-import { ItemComanda } from '@/types/restaurant';
-import { useToast } from '@/hooks/use-toast';
-import { GerenciadorImpressao } from '@/utils/impressao';
-import { GerenciadorImpressao } from '@/utils/impressao';
+import React, { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { ChefHat, Printer, Settings, Eye } from "lucide-react";
+import { ItemComanda } from "@/types/restaurant";
+import { useToast } from "@/hooks/use-toast";
+import {
+  GerenciadorImpressao,
+  ConfigImpressaoCozinha,
+  carregarConfigCozinha,
+  salvarConfigCozinha,
+  carregarConfiguracaoImpressao,
+  temImpressoraConfigurada,
+  CONFIG_COZINHA_PADRAO,
+} from "@/utils/impressao";
 
 interface ImpressaoCozinhaProps {
   isOpen: boolean;
@@ -21,153 +38,121 @@ interface ImpressaoCozinhaProps {
   garcomNome: string;
 }
 
-interface ConfigImpressaoCozinha {
-  mostrarHorario: boolean;
-  mostrarMesa: boolean;
-  mostrarGarcom: boolean;
-  mostrarObservacoes: boolean;
-  separarPorCategoria: boolean;
-  tamanhoFonte: 'pequeno' | 'medio' | 'grande';
-  larguraFonte: 'condensado' | 'normal' | 'expandido';
-  incluirCabecalho: boolean;
-  cabecalhoPersonalizado: string;
-  incluirRodape: boolean;
-  rodapePersonalizado: string;
-}
-
-const ImpressaoCozinha = ({ isOpen, onClose, itens, mesaNumero, garcomNome }: ImpressaoCozinhaProps) => {
+const ImpressaoCozinha = ({
+  isOpen,
+  onClose,
+  itens,
+  mesaNumero,
+  garcomNome,
+}: ImpressaoCozinhaProps) => {
   const { toast } = useToast();
   const [config, setConfig] = useState<ConfigImpressaoCozinha>({
-    mostrarHorario: true,
-    mostrarMesa: true,
-    mostrarGarcom: true,
-    mostrarObservacoes: true,
-    separarPorCategoria: false,
-    tamanhoFonte: 'medio',
-    larguraFonte: 'normal',
-    incluirCabecalho: true,
-    cabecalhoPersonalizado: '*** PEDIDO COZINHA ***',
-    incluirRodape: true,
-    rodapePersonalizado: '--- BOM TRABALHO! ---'
+    ...CONFIG_COZINHA_PADRAO,
   });
-  
-  const [mostrandoPreview, setMostrandoPreview] = useState(false);
   const [imprimindo, setImprimindo] = useState(false);
 
-  const gerarConteudoPedido = (): string => {
-    const agora = new Date();
-    const dataHora = agora.toLocaleString('pt-BR');
-    const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    
-    let conteudo = '';
-    
-    // Cabeçalho personalizado
-    if (config.incluirCabecalho && config.cabecalhoPersonalizado) {
-      conteudo += `${config.cabecalhoPersonalizado}\n`;
-      conteudo += '='.repeat(config.cabecalhoPersonalizado.length) + '\n\n';
+  React.useEffect(() => {
+    if (isOpen) {
+      setConfig(carregarConfigCozinha());
     }
-    
-    // Informações do pedido
-    if (config.mostrarHorario) {
-      conteudo += `HORARIO: ${hora}\n`;
-    }
-    
-    if (config.mostrarMesa) {
-      conteudo += `MESA: ${mesaNumero}\n`;
-    }
-    
-    if (config.mostrarGarcom && garcomNome) {
-      conteudo += `GARCOM: ${garcomNome}\n`;
-    }
-    
-    conteudo += '\n' + '-'.repeat(30) + '\n\n';
-    
-    // Itens do pedido
-    if (config.separarPorCategoria) {
-      // Agrupar por categoria (simulado)
-      const categorias = new Map();
-      itens.forEach(item => {
-        const categoria = 'GERAL'; // Aqui você pode implementar lógica de categoria
-        if (!categorias.has(categoria)) {
-          categorias.set(categoria, []);
-        }
-        categorias.get(categoria).push(item);
-      });
-      
-      categorias.forEach((items, categoria) => {
-        conteudo += `** ${categoria} **\n\n`;
-        items.forEach(item => {
-          conteudo += gerarLinhaItem(item);
-        });
-        conteudo += '\n';
-      });
-    } else {
-      itens.forEach(item => {
-        conteudo += gerarLinhaItem(item);
-      });
-    }
-    
-    // Rodapé personalizado
-    if (config.incluirRodape && config.rodapePersonalizado) {
-      conteudo += '\n' + '-'.repeat(30) + '\n';
-      conteudo += config.rodapePersonalizado + '\n';
-    }
-    
-    return conteudo;
-  };
+  }, [isOpen]);
 
   const gerarLinhaItem = (item: ItemComanda): string => {
-    let linha = '';
-    
-    // Nome do produto e quantidade
     const nomeCompleto = item.produto_nome;
-    const temObservacao = nomeCompleto.includes('(') && nomeCompleto.includes(')');
-    const nomeProduto = temObservacao ? nomeCompleto.split('(')[0].trim() : nomeCompleto;
-    const observacao = temObservacao ? nomeCompleto.split('(')[1].replace(')', '').trim() : null;
-    
-    linha += `${item.quantidade}x ${nomeProduto}\n`;
-    
-    // Observações
+    const temObservacao =
+      nomeCompleto.includes("(") && nomeCompleto.includes(")");
+    const nomeProduto = temObservacao
+      ? nomeCompleto.split("(")[0].trim()
+      : nomeCompleto;
+    const observacao = temObservacao
+      ? nomeCompleto.split("(")[1].replace(")", "").trim()
+      : null;
+
+    let linha = `${item.quantidade}x ${nomeProduto}\n`;
     if (config.mostrarObservacoes && observacao) {
       linha += `   >>> ${observacao} <<<\n`;
     }
-    
-    linha += '\n';
+    linha += "\n";
     return linha;
   };
 
+  const gerarConteudoPedido = (): string => {
+    const hora = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    let conteudo = "";
+
+    if (config.incluirCabecalho && config.cabecalhoPersonalizado) {
+      conteudo += `${config.cabecalhoPersonalizado}\n`;
+      conteudo += "=".repeat(config.cabecalhoPersonalizado.length) + "\n\n";
+    }
+
+    if (config.mostrarHorario) conteudo += `HORARIO: ${hora}\n`;
+    if (config.mostrarMesa) conteudo += `MESA: ${mesaNumero}\n`;
+    if (config.mostrarGarcom && garcomNome) {
+      conteudo += `GARCOM: ${garcomNome}\n`;
+    }
+
+    conteudo += "\n" + "-".repeat(30) + "\n\n";
+
+    itens.forEach((item) => {
+      conteudo += gerarLinhaItem(item);
+    });
+
+    if (config.incluirRodape && config.rodapePersonalizado) {
+      conteudo += "\n" + "-".repeat(30) + "\n";
+      conteudo += config.rodapePersonalizado + "\n";
+    }
+
+    return conteudo;
+  };
+
   const imprimirPedido = async () => {
+    if (!temImpressoraConfigurada()) {
+      toast({
+        title: "Impressora não configurada",
+        description: "Configure em Impressora antes de imprimir",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setImprimindo(true);
-    
+
     try {
-      const gerenciador = GerenciadorImpressao.obterInstancia();
-      const conteudo = gerarConteudoPedido();
-      const titulo = `Pedido Cozinha - Mesa ${mesaNumero}`;
-      
-      // Configuração de impressão baseada nas preferências
-      const configImpressao = {
-        largura: '80mm',
-        altura: '200mm',
-        tamanhoFonte: config.tamanhoFonte === 'pequeno' ? '8px' : 
-                      config.tamanhoFonte === 'medio' ? '10px' : '12px',
-        margens: '2mm'
-      };
-      
-      const sucesso = await gerenciador.imprimir(conteudo, titulo, configImpressao);
-      
+      const impressoraConfig = carregarConfiguracaoImpressao();
+      const tamanhoFonte =
+        config.tamanhoFonte === "pequeno"
+          ? "8px"
+          : config.tamanhoFonte === "medio"
+            ? "10px"
+            : "12px";
+
+      const sucesso = await GerenciadorImpressao.obterInstancia().imprimir(
+        gerarConteudoPedido(),
+        `Pedido Cozinha - Mesa ${mesaNumero}`,
+        { ...impressoraConfig, tamanhoFonte }
+      );
+
       if (sucesso) {
         toast({
           title: "Pedido enviado para cozinha!",
-          description: `Mesa ${mesaNumero} - ${itens.length} itens`,
+          description: `Mesa ${mesaNumero} → ${impressoraConfig.impressora}`,
         });
         onClose();
+      } else {
+        toast({
+          title: "Erro na impressão",
+          description: "Verifique a impressora e o servidor",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      console.error('Erro na impressão:', error);
+    } catch {
       toast({
         title: "Erro na impressão",
         description: "Verifique se a impressora está conectada",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setImprimindo(false);
@@ -175,30 +160,18 @@ const ImpressaoCozinha = ({ isOpen, onClose, itens, mesaNumero, garcomNome }: Im
   };
 
   const salvarConfiguracao = () => {
-    localStorage.setItem('config-impressao-cozinha', JSON.stringify(config));
+    salvarConfigCozinha(config);
     toast({
       title: "Configuração salva!",
-      description: "Suas preferências foram salvas",
+      description: "Preferências de layout da cozinha salvas",
     });
   };
 
-  const carregarConfiguracao = () => {
-    const configSalva = localStorage.getItem('config-impressao-cozinha');
-    if (configSalva) {
-      setConfig(JSON.parse(configSalva));
-    }
-  };
-
-  React.useEffect(() => {
-    if (isOpen) {
-      carregarConfiguracao();
-    }
-  }, [isOpen]);
-
   const previewConteudo = gerarConteudoPedido();
+  const impressoraAtiva = carregarConfiguracaoImpressao().impressora;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(aberto) => { if (!aberto) onClose(); }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -208,63 +181,79 @@ const ImpressaoCozinha = ({ isOpen, onClose, itens, mesaNumero, garcomNome }: Im
         </DialogHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Configurações */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Settings className="h-4 w-4" />
-                Configurações de Impressão
+                Layout do pedido
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Informações a incluir */}
+              {impressoraAtiva && (
+                <p className="text-xs text-muted-foreground rounded-md bg-muted p-2">
+                  Impressora: <strong>{impressoraAtiva}</strong> (definida em
+                  Gerenciar Impressora)
+                </p>
+              )}
+
               <div className="space-y-3">
                 <h4 className="font-medium text-sm">Informações a incluir:</h4>
-                
+
                 <div className="flex items-center justify-between">
                   <Label htmlFor="horario">Mostrar horário</Label>
                   <Switch
                     id="horario"
                     checked={config.mostrarHorario}
-                    onCheckedChange={(checked) => setConfig({...config, mostrarHorario: checked})}
+                    onCheckedChange={(checked) =>
+                      setConfig({ ...config, mostrarHorario: checked })
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <Label htmlFor="mesa">Mostrar mesa</Label>
                   <Switch
                     id="mesa"
                     checked={config.mostrarMesa}
-                    onCheckedChange={(checked) => setConfig({...config, mostrarMesa: checked})}
+                    onCheckedChange={(checked) =>
+                      setConfig({ ...config, mostrarMesa: checked })
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <Label htmlFor="garcom">Mostrar garçom</Label>
                   <Switch
                     id="garcom"
                     checked={config.mostrarGarcom}
-                    onCheckedChange={(checked) => setConfig({...config, mostrarGarcom: checked})}
+                    onCheckedChange={(checked) =>
+                      setConfig({ ...config, mostrarGarcom: checked })
+                    }
                   />
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <Label htmlFor="observacoes">Mostrar observações</Label>
                   <Switch
                     id="observacoes"
                     checked={config.mostrarObservacoes}
-                    onCheckedChange={(checked) => setConfig({...config, mostrarObservacoes: checked})}
+                    onCheckedChange={(checked) =>
+                      setConfig({ ...config, mostrarObservacoes: checked })
+                    }
                   />
                 </div>
               </div>
 
-              {/* Formatação */}
               <div className="space-y-3">
                 <h4 className="font-medium text-sm">Formatação:</h4>
-                
                 <div>
                   <Label>Tamanho da fonte</Label>
-                  <Select value={config.tamanhoFonte} onValueChange={(value: 'pequeno' | 'medio' | 'grande') => setConfig({...config, tamanhoFonte: value})}>
+                  <Select
+                    value={config.tamanhoFonte}
+                    onValueChange={(value: "pequeno" | "medio" | "grande") =>
+                      setConfig({ ...config, tamanhoFonte: value })
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -277,58 +266,74 @@ const ImpressaoCozinha = ({ isOpen, onClose, itens, mesaNumero, garcomNome }: Im
                 </div>
               </div>
 
-              {/* Textos personalizados */}
               <div className="space-y-3">
                 <h4 className="font-medium text-sm">Textos personalizados:</h4>
-                
+
                 <div className="flex items-center justify-between">
                   <Label htmlFor="cabecalho">Incluir cabeçalho</Label>
                   <Switch
                     id="cabecalho"
                     checked={config.incluirCabecalho}
-                    onCheckedChange={(checked) => setConfig({...config, incluirCabecalho: checked})}
+                    onCheckedChange={(checked) =>
+                      setConfig({ ...config, incluirCabecalho: checked })
+                    }
                   />
                 </div>
-                
+
                 {config.incluirCabecalho && (
                   <div>
                     <Label>Texto do cabeçalho</Label>
                     <Input
                       value={config.cabecalhoPersonalizado}
-                      onChange={(e) => setConfig({...config, cabecalhoPersonalizado: e.target.value})}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          cabecalhoPersonalizado: e.target.value,
+                        })
+                      }
                       placeholder="Digite o cabeçalho..."
                     />
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-between">
                   <Label htmlFor="rodape">Incluir rodapé</Label>
                   <Switch
                     id="rodape"
                     checked={config.incluirRodape}
-                    onCheckedChange={(checked) => setConfig({...config, incluirRodape: checked})}
+                    onCheckedChange={(checked) =>
+                      setConfig({ ...config, incluirRodape: checked })
+                    }
                   />
                 </div>
-                
+
                 {config.incluirRodape && (
                   <div>
                     <Label>Texto do rodapé</Label>
                     <Input
                       value={config.rodapePersonalizado}
-                      onChange={(e) => setConfig({...config, rodapePersonalizado: e.target.value})}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          rodapePersonalizado: e.target.value,
+                        })
+                      }
                       placeholder="Digite o rodapé..."
                     />
                   </div>
                 )}
               </div>
 
-              <Button onClick={salvarConfiguracao} variant="outline" className="w-full">
-                Salvar Configuração
+              <Button
+                onClick={salvarConfiguracao}
+                variant="outline"
+                className="w-full"
+              >
+                Salvar Layout
               </Button>
             </CardContent>
           </Card>
 
-          {/* Preview */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -342,15 +347,15 @@ const ImpressaoCozinha = ({ isOpen, onClose, itens, mesaNumero, garcomNome }: Im
                   {previewConteudo}
                 </pre>
               </div>
-              
+
               <div className="flex gap-2 mt-4">
                 <Button
-                  onClick={imprimirPedido}
+                  onClick={() => void imprimirPedido()}
                   disabled={imprimindo || itens.length === 0}
                   className="flex-1"
                 >
                   <Printer className="h-4 w-4 mr-2" />
-                  {imprimindo ? 'Imprimindo...' : 'Imprimir Pedido'}
+                  {imprimindo ? "Imprimindo..." : "Imprimir Pedido"}
                 </Button>
                 <Button variant="outline" onClick={onClose}>
                   Cancelar

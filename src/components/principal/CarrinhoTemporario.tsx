@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ShoppingCart, Printer, Trash2, Plus, Minus, ChefHat, Send } from 'lucide-react';
-import { ItemComanda } from '@/types/restaurant';
-import { useToast } from '@/hooks/use-toast';
-import { GerenciadorImpressao, ConfiguracaoImpressao } from '@/utils/impressao';
-import GerenciadorImpressora from './GerenciadorImpressora';
-import ImpressaoCozinha from './ImpressaoCozinha';
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  ShoppingCart,
+  Printer,
+  Trash2,
+  Plus,
+  Minus,
+  ChefHat,
+  Send,
+} from "lucide-react";
+import { ItemComanda } from "@/types/restaurant";
+import { useToast } from "@/hooks/use-toast";
+import {
+  GerenciadorImpressao,
+  carregarConfiguracaoImpressao,
+  temImpressoraConfigurada,
+} from "@/utils/impressao";
+import GerenciadorImpressora from "./GerenciadorImpressora";
+import ImpressaoCozinha from "./ImpressaoCozinha";
 
 interface CarrinhoTemporarioProps {
   itens: ItemComanda[];
@@ -27,31 +39,21 @@ const CarrinhoTemporario = ({
   onLimparCarrinho,
   onEnviarEVoltar,
   mesaNumero,
-  garcomNome
+  garcomNome,
 }: CarrinhoTemporarioProps) => {
   const { toast } = useToast();
   const [imprimindo, setImprimindo] = useState(false);
   const [modalCozinha, setModalCozinha] = useState(false);
 
-  const obterConfiguracaoImpressao = (): ConfiguracaoImpressao => {
-    const configSalva = localStorage.getItem('configuracao-impressao');
-    if (configSalva) {
-      return JSON.parse(configSalva);
-    }
-    return {
-      largura: '80mm',
-      altura: '200mm',
-      tamanhoFonte: '9px',
-      margens: '1mm'
-    };
-  };
-
   const calcularTotal = () => {
-    return itens.reduce((total, item) => total + (item.valor_unitario * item.quantidade), 0);
+    return itens.reduce(
+      (total, item) => total + item.valor_unitario * item.quantidade,
+      0
+    );
   };
 
   const gerarConteudoComanda = (): string => {
-    const dataHora = new Date().toLocaleString('pt-BR');
+    const dataHora = new Date().toLocaleString("pt-BR");
     let conteudo = `=================================
      COMANDA - MESA ${mesaNumero}
 =================================
@@ -61,19 +63,22 @@ Garcom: ${garcomNome}
 ITENS SOLICITADOS:
 `;
 
-    itens.forEach(item => {
+    itens.forEach((item) => {
       const subtotal = item.valor_unitario * item.quantidade;
-      
-      // Extrair nome do produto e observações para impressão
       const nomeCompleto = item.produto_nome;
-      const temObservacao = nomeCompleto.includes('(') && nomeCompleto.includes(')');
-      const nomeProduto = temObservacao ? nomeCompleto.split('(')[0].trim() : nomeCompleto;
-      const observacao = temObservacao ? nomeCompleto.split('(')[1].replace(')', '').trim() : null;
-      
+      const temObservacao =
+        nomeCompleto.includes("(") && nomeCompleto.includes(")");
+      const nomeProduto = temObservacao
+        ? nomeCompleto.split("(")[0].trim()
+        : nomeCompleto;
+      const observacao = temObservacao
+        ? nomeCompleto.split("(")[1].replace(")", "").trim()
+        : null;
+
       conteudo += `
 ${nomeProduto}
 Qtd: ${item.quantidade} x R$ ${item.valor_unitario.toFixed(2)} = R$ ${subtotal.toFixed(2)}`;
-      
+
       if (observacao) {
         conteudo += `
 *** OBS: ${observacao} ***`;
@@ -96,35 +101,49 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
       toast({
         title: "Carrinho vazio",
         description: "Adicione produtos antes de imprimir",
-        variant: "destructive"
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!temImpressoraConfigurada()) {
+      toast({
+        title: "Impressora não configurada",
+        description: "Clique em Impressora, escaneie e salve uma impressora",
+        variant: "destructive",
       });
       return false;
     }
 
     setImprimindo(true);
-    
+
     try {
-      const gerenciador = GerenciadorImpressao.obterInstancia();
-      const conteudo = gerarConteudoComanda();
-      const titulo = `Comanda Mesa ${mesaNumero}`;
-      const config = obterConfiguracaoImpressao();
-      
-      const sucesso = await gerenciador.imprimir(conteudo, titulo, config);
-      
+      const config = carregarConfiguracaoImpressao();
+      const sucesso = await GerenciadorImpressao.obterInstancia().imprimir(
+        gerarConteudoComanda(),
+        `Comanda Mesa ${mesaNumero}`,
+        config
+      );
+
       if (sucesso) {
         toast({
           title: "Comanda enviada para impressão",
-          description: `Mesa ${mesaNumero} - ${itens.length} itens`,
+          description: `Mesa ${mesaNumero} → ${config.impressora}`,
+        });
+      } else {
+        toast({
+          title: "Erro na impressão",
+          description: "Verifique a impressora e se o servidor está rodando",
+          variant: "destructive",
         });
       }
-      
+
       return sucesso;
-    } catch (error) {
-      console.error('Erro na impressão:', error);
+    } catch {
       toast({
         title: "Erro na impressão",
         description: "Verifique se sua impressora está conectada",
-        variant: "destructive"
+        variant: "destructive",
       });
       return false;
     } finally {
@@ -137,18 +156,15 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
       toast({
         title: "Carrinho vazio",
         description: "Adicione produtos antes de confirmar",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    // Primeiro imprime a comanda
     const impressaoOk = await imprimirComanda();
-    
+
     if (impressaoOk) {
-      // Depois confirma o pedido na mesa
       onConfirmarPedido();
-      
       toast({
         title: "Pedido confirmado e enviado!",
         description: `Mesa ${mesaNumero} - Comanda impressa para produção`,
@@ -177,24 +193,32 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
       </CardHeader>
       <CardContent className="space-y-3">
         {itens.map((item, index) => {
-          // Extrair nome do produto e observações
           const nomeCompleto = item.produto_nome;
-          const temObservacao = nomeCompleto.includes('(') && nomeCompleto.includes(')');
-          const nomeProduto = temObservacao ? nomeCompleto.split('(')[0].trim() : nomeCompleto;
-          const observacao = temObservacao ? nomeCompleto.split('(')[1].replace(')', '').trim() : null;
+          const temObservacao =
+            nomeCompleto.includes("(") && nomeCompleto.includes(")");
+          const nomeProduto = temObservacao
+            ? nomeCompleto.split("(")[0].trim()
+            : nomeCompleto;
+          const observacao = temObservacao
+            ? nomeCompleto.split("(")[1].replace(")", "").trim()
+            : null;
 
           return (
-            <div key={index} className="flex items-center justify-between p-2 border rounded">
+            <div
+              key={index}
+              className="flex items-center justify-between p-2 border rounded"
+            >
               <div className="flex-1">
                 <p className="font-medium text-sm">{nomeProduto}</p>
                 {observacao && (
                   <p className="text-xs text-primary italic">Obs: {observacao}</p>
                 )}
                 <p className="text-xs text-gray-600">
-                  R$ {item.valor_unitario.toFixed(2)} x {item.quantidade} = R$ {(item.valor_unitario * item.quantidade).toFixed(2)}
+                  R$ {item.valor_unitario.toFixed(2)} x {item.quantidade} = R${" "}
+                  {(item.valor_unitario * item.quantidade).toFixed(2)}
                 </p>
               </div>
-              
+
               <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
@@ -226,11 +250,13 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
             </div>
           );
         })}
-        
+
         <div className="pt-2 border-t">
-          <p className="font-bold text-right">Total: R$ {calcularTotal().toFixed(2)}</p>
+          <p className="font-bold text-right">
+            Total: R$ {calcularTotal().toFixed(2)}
+          </p>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-2 mb-2">
           <Button
             onClick={() => setModalCozinha(true)}
@@ -242,12 +268,12 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
             Cozinha Custom
           </Button>
           <Button
-            onClick={imprimirComanda}
+            onClick={() => void imprimirComanda()}
             variant="outline"
             disabled={imprimindo}
           >
             <Printer className="h-4 w-4 mr-2" />
-            {imprimindo ? 'Imprimindo...' : 'Imprimir Rápido'}
+            {imprimindo ? "Imprimindo..." : "Imprimir Rápido"}
           </Button>
         </div>
 
@@ -257,7 +283,7 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
             if (ok) {
               onConfirmarPedido();
               toast({
-                title: 'Pedidos enviados!',
+                title: "Pedidos enviados!",
                 description: `Mesa ${mesaNumero} — voltando para o painel de mesas`,
               });
               onEnviarEVoltar?.();
@@ -268,28 +294,24 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
           size="lg"
         >
           <Send className="h-4 w-4 mr-2" />
-          {imprimindo ? 'Enviando...' : 'Enviar Pedidos'}
+          {imprimindo ? "Enviando..." : "Enviar Pedidos"}
         </Button>
 
         <div className="flex gap-2">
           <Button
-            onClick={confirmarEImprimir}
+            onClick={() => void confirmarEImprimir()}
             variant="outline"
             className="flex-1"
             disabled={imprimindo}
           >
             <Printer className="h-4 w-4 mr-2" />
-            {imprimindo ? 'Processando...' : 'Confirmar (ficar na mesa)'}
+            {imprimindo ? "Processando..." : "Confirmar (ficar na mesa)"}
           </Button>
-          <Button
-            onClick={onLimparCarrinho}
-            variant="destructive"
-            size="sm"
-          >
+          <Button onClick={onLimparCarrinho} variant="destructive" size="sm">
             Limpar
           </Button>
         </div>
-        
+
         <ImpressaoCozinha
           isOpen={modalCozinha}
           onClose={() => setModalCozinha(false)}

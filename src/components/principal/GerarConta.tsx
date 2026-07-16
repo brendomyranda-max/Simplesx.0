@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Receipt, Printer, Calculator, Users } from 'lucide-react';
 import { Comanda } from '@/types/restaurant';
 import { useToast } from '@/hooks/use-toast';
+import {
+  GerenciadorImpressao,
+  carregarConfiguracaoImpressao,
+  temImpressoraConfigurada,
+} from '@/utils/impressao';
 
 interface GerarContaProps {
   open: boolean;
@@ -49,9 +53,9 @@ const GerarConta = ({ open, onOpenChange, comanda, onGerarConta }: GerarContaPro
   const totalPersonalizado = divisaoPersonalizada.reduce((acc, div) => acc + div.valor, 0);
   const diferenca = valorComGorjeta - totalPersonalizado;
 
-  const imprimirConta = () => {
+  const gerarConteudoConta = (): string => {
     const dataHora = new Date().toLocaleString('pt-BR');
-    let conteudoImpressao = `
+    let conteudo = `
 =================================
          CONTA - MESA ${comanda.mesa}
 =================================
@@ -62,34 +66,37 @@ Pessoas: ${tipoDivisao === 'igual' ? numeroPessoas : divisaoPersonalizada.length
 ITENS CONSUMIDOS:
 `;
 
-    comanda.itens.forEach(item => {
+    comanda.itens.forEach((item) => {
       const subtotal = item.valor_unitario * item.quantidade;
-      
-      // Extrair nome do produto e observações
       const nomeCompleto = item.produto_nome;
-      const temObservacao = nomeCompleto.includes('(') && nomeCompleto.includes(')');
-      const nomeProduto = temObservacao ? nomeCompleto.split('(')[0].trim() : nomeCompleto;
-      const observacao = temObservacao ? nomeCompleto.split('(')[1].replace(')', '').trim() : null;
-      
-      conteudoImpressao += `
+      const temObservacao =
+        nomeCompleto.includes('(') && nomeCompleto.includes(')');
+      const nomeProduto = temObservacao
+        ? nomeCompleto.split('(')[0].trim()
+        : nomeCompleto;
+      const observacao = temObservacao
+        ? nomeCompleto.split('(')[1].replace(')', '').trim()
+        : null;
+
+      conteudo += `
 ${nomeProduto}
 ${item.quantidade}x R$ ${item.valor_unitario.toFixed(2)} = R$ ${subtotal.toFixed(2)}`;
-      
+
       if (observacao) {
-        conteudoImpressao += `
+        conteudo += `
 *** Obs: ${observacao} ***`;
       }
-      
+
       if (item.garcom) {
-        conteudoImpressao += `
+        conteudo += `
 (Lançado por: ${item.garcom})`;
       }
-      
-      conteudoImpressao += `
+
+      conteudo += `
 `;
     });
 
-    conteudoImpressao += `
+    conteudo += `
 ---------------------------------
 Subtotal: R$ ${valorTotal.toFixed(2)}
 Gorjeta (${porcentagemGarcom}%): R$ ${valorGorjeta.toFixed(2)}
@@ -98,66 +105,67 @@ TOTAL: R$ ${valorComGorjeta.toFixed(2)}
 `;
 
     if (tipoDivisao === 'igual') {
-      conteudoImpressao += `
+      conteudo += `
 DIVISÃO IGUAL:
 ${numeroPessoas} pessoas
 Valor por pessoa: R$ ${valorPorPessoa.toFixed(2)}
 `;
     } else {
-      conteudoImpressao += `
+      conteudo += `
 DIVISÃO PERSONALIZADA:
 `;
-      divisaoPersonalizada.forEach(div => {
-        conteudoImpressao += `${div.pessoa}: R$ ${div.valor.toFixed(2)}
+      divisaoPersonalizada.forEach((div) => {
+        conteudo += `${div.pessoa}: R$ ${div.valor.toFixed(2)}
 `;
       });
     }
 
-    conteudoImpressao += `
+    conteudo += `
 =================================
 `;
-
-    // Imprimir usando window.print()
-    const novaJanela = window.open('', '_blank');
-    if (novaJanela) {
-      novaJanela.document.write(`
-        <html>
-          <head>
-            <title>Conta Mesa ${comanda.mesa}</title>
-            <style>
-              body { font-family: monospace; font-size: 12px; margin: 20px; }
-              pre { white-space: pre-wrap; }
-            </style>
-          </head>
-          <body>
-            <pre>${conteudoImpressao}</pre>
-            <script>
-              window.onload = function() {
-                window.print();
-                setTimeout(function() {
-                  window.close();
-                }, 1000);
-              }
-            </script>
-          </body>
-        </html>
-      `);
-      novaJanela.document.close();
-    }
-
-    toast({
-      title: "Conta enviada para impressão",
-      description: `Mesa ${comanda.mesa} - Total: R$ ${valorComGorjeta.toFixed(2)}`,
-    });
+    return conteudo;
   };
 
-  const handleConfirmar = () => {
+  const imprimirConta = async () => {
+    if (!temImpressoraConfigurada()) {
+      toast({
+        title: 'Impressora não configurada',
+        description: 'Configure em Impressora, escaneie e salve uma impressora',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    const config = carregarConfiguracaoImpressao();
+    const sucesso = await GerenciadorImpressao.obterInstancia().imprimir(
+      gerarConteudoConta(),
+      `Conta Mesa ${comanda.mesa}`,
+      config
+    );
+
+    if (sucesso) {
+      toast({
+        title: 'Conta enviada para impressão',
+        description: `Mesa ${comanda.mesa} → ${config.impressora} · R$ ${valorComGorjeta.toFixed(2)}`,
+      });
+    } else {
+      toast({
+        title: 'Erro na impressão',
+        description: 'Verifique a impressora e o servidor',
+        variant: 'destructive',
+      });
+    }
+
+    return sucesso;
+  };
+
+  const handleConfirmar = async () => {
     onGerarConta(
       porcentagemGarcom,
       tipoDivisao,
       tipoDivisao === 'personalizado' ? divisaoPersonalizada : undefined
     );
-    imprimirConta();
+    await imprimirConta();
   };
 
   return (
@@ -303,7 +311,7 @@ DIVISÃO PERSONALIZADA:
 
           <div className="flex gap-2 pt-4">
             <Button
-              onClick={imprimirConta}
+              onClick={() => void imprimirConta()}
               variant="outline"
               className="flex-1"
             >
@@ -311,7 +319,7 @@ DIVISÃO PERSONALIZADA:
               Só Imprimir
             </Button>
             <Button 
-              onClick={handleConfirmar}
+              onClick={() => void handleConfirmar()}
               disabled={tipoDivisao === 'personalizado' && Math.abs(diferenca) > 0.01}
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
