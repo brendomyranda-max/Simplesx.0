@@ -1,3 +1,14 @@
+/**
+ * ============================================================
+ * DespesasDia.tsx
+ * ============================================================
+ * PAPEL: Lista despesas registradas no dia atual.
+ * QUEM USA: pages/Index.tsx (aba Gestor).
+ * O QUE FAZ:
+ *   - Filtra despesas com data = hoje.
+ *   - Exibe total e detalhe (ex.: cancelamento de mesa + itens/CMV).
+ * ============================================================
+ */
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +23,7 @@ interface DespesasDiaProps {
 }
 
 const DespesasDia = ({ despesas }: DespesasDiaProps) => {
+  // ── Apenas despesas de hoje ──
   const despesasHoje = despesas.filter(despesa => {
     const hoje = new Date();
     const dataDespesa = despesa.data;
@@ -20,6 +32,7 @@ const DespesasDia = ({ despesas }: DespesasDiaProps) => {
 
   const totalDespesas = despesasHoje.reduce((total, despesa) => total + despesa.valor, 0);
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>
@@ -61,6 +74,7 @@ const DespesasDia = ({ despesas }: DespesasDiaProps) => {
                   </div>
                 </div>
                 
+                {/* Detalhe dos itens que geraram a despesa de CMV */}
                 {despesa.itens && despesa.itens.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-red-200">
                     <p className="text-sm font-medium text-red-700 mb-2">

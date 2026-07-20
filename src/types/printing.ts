@@ -1,3 +1,19 @@
+/**
+ * ============================================================
+ * printing.ts
+ * ============================================================
+ * PAPEL: Tipos e constantes de configuração de impressão (POS).
+ * QUEM USA: utils/impressao, formatters/html, nativePrinter,
+ *           GerenciadorImpressora, ImpressaoCozinha, GerarConta.
+ * O QUE FAZ:
+ *   - Define status CUPS e impressoras detectadas no PC.
+ *   - Configuração de impressão (impressora, servidor, layout térmico).
+ *   - Preferências do ticket de cozinha.
+ *   - Chaves de localStorage e valores padrão.
+ * ============================================================
+ */
+
+// ── Status reportado pelo CUPS ao escanear impressoras ──
 /** Status reportado pelo CUPS ao escanear impressoras */
 export type StatusImpressora =
   | "pronta"
@@ -5,6 +21,7 @@ export type StatusImpressora =
   | "imprimindo"
   | "disponivel";
 
+// ── Impressora detectada no computador (via servidor local) ──
 /** Impressora detectada no computador (via servidor local) */
 export interface ImpressoraDisponivel {
   nome: string;
@@ -40,10 +57,12 @@ export interface ConfigImpressaoCozinha {
   rodapePersonalizado: string;
 }
 
+// ── Constantes: servidor padrão e chaves de persistência ──
 export const SERVIDOR_IMPRESSAO_PADRAO = "http://localhost:3001";
 export const CHAVE_CONFIG_IMPRESSAO = "configuracao-impressao";
 export const CHAVE_CONFIG_COZINHA = "config-impressao-cozinha";
 
+/** Defaults de papel térmico / layout usados na 1ª configuração */
 export const CONFIG_IMPRESSAO_PADRAO: ConfiguracaoImpressao = {
   impressora: "",
   servidorUrl: SERVIDOR_IMPRESSAO_PADRAO,
@@ -53,6 +72,7 @@ export const CONFIG_IMPRESSAO_PADRAO: ConfiguracaoImpressao = {
   margens: "1mm",
 };
 
+/** Defaults do ticket de cozinha (textos e campos visíveis) */
 export const CONFIG_COZINHA_PADRAO: ConfigImpressaoCozinha = {
   mostrarHorario: true,
   mostrarMesa: true,

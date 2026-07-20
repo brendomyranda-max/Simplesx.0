@@ -1,3 +1,15 @@
+/**
+ * ============================================================
+ * GerenciarCategorias.tsx
+ * ============================================================
+ * PAPEL: CRUD simples de categorias de cardápio (criar/listar/remover).
+ * QUEM USA: pages/Index.tsx (aba Gestor).
+ * O QUE FAZ:
+ *   - Cria categoria com nome + cor (paleta fixa).
+ *   - Impede nomes duplicados (case-insensitive).
+ *   - Remove por id via callback do pai.
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,10 +28,12 @@ interface GerenciarCategoriasProps {
 }
 
 const GerenciarCategorias = ({ categorias, onCategoriaAdicionada, onCategoriaRemovida }: GerenciarCategoriasProps) => {
+  // ── Estado do formulário de nova categoria ──
   const [nome, setNome] = useState('');
   const [cor, setCor] = useState('#3B82F6');
   const { toast } = useToast();
 
+  // Paleta de cores disponíveis para badge/UI
   const cores = [
     { nome: 'Azul', valor: '#3B82F6' },
     { nome: 'Verde', valor: '#10B981' },
@@ -31,6 +45,9 @@ const GerenciarCategorias = ({ categorias, onCategoriaAdicionada, onCategoriaRem
     { nome: 'Cinza', valor: '#6B7280' }
   ];
 
+  // ── Handlers ──
+
+  /** Valida e adiciona categoria (nome único). */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -76,6 +93,7 @@ const GerenciarCategorias = ({ categorias, onCategoriaAdicionada, onCategoriaRem
     });
   };
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>

@@ -1,3 +1,15 @@
+/**
+ * ============================================================
+ * AdicionarProduto.tsx
+ * ============================================================
+ * PAPEL: Catálogo para lançar produtos no carrinho da mesa.
+ * QUEM USA: GerenciarComanda.tsx.
+ * O QUE FAZ:
+ *   - Busca por nome e filtro por categoria.
+ *   - Adição rápida ao carrinho ou com observações (ModalObservacoes).
+ *   - Não grava na comanda direto — usa onAdicionarAoCarrinho.
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,12 +37,14 @@ const AdicionarProduto = ({
   onSairMesa,
   onAdicionarAoCarrinho,
 }: AdicionarProdutoProps) => {
+  // ── Estado local: busca, categoria e modal de observações ──
   const [busca, setBusca] = useState('');
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<string>('todas');
   const [modalObservacoes, setModalObservacoes] = useState(false);
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null);
   const { toast } = useToast();
 
+  // Categorias distintas derivadas do cardápio
   const categorias = [...new Set(produtos.map(p => p.categoria))].sort();
 
   const produtosFiltrados = produtos.filter(produto => {
@@ -38,6 +52,8 @@ const AdicionarProduto = ({
     const matchCategoria = categoriaSelecionada === 'todas' || produto.categoria === categoriaSelecionada;
     return matchBusca && matchCategoria;
   });
+
+  // ── Handlers ──
 
   const abrirModalObservacoes = (produto: Produto) => {
     setProdutoSelecionado(produto);
@@ -49,6 +65,7 @@ const AdicionarProduto = ({
     adicionarProdutoAoCarrinho(produtoSelecionado, quantidade, observacao);
   };
 
+  /** Encaminha para o carrinho da comanda (pai), com garçom da mesa. */
   const adicionarProdutoAoCarrinho = (produto: Produto, quantidade: number = 1, comentario?: string) => {
     if (onAdicionarAoCarrinho) {
       onAdicionarAoCarrinho(produto, quantidade, comentario, comanda.garcom);
@@ -57,6 +74,7 @@ const AdicionarProduto = ({
     }
   };
 
+  // ── Card de produto na lista ──
   const renderProduto = (produto: Produto) => (
     <div key={produto.id} className="flex items-center justify-between p-3 border rounded-lg">
       <div className="flex-1">
@@ -67,6 +85,7 @@ const AdicionarProduto = ({
         </Badge>
       </div>
       <div className="flex gap-1">
+        {/* Adição rápida (qtd 1, sem obs) */}
         <Button
           size="sm"
           variant="outline"
@@ -75,6 +94,7 @@ const AdicionarProduto = ({
         >
           <ShoppingCart className="h-4 w-4" />
         </Button>
+        {/* Abre modal de qtd + observações */}
         <Button
           size="sm"
           onClick={() => abrirModalObservacoes(produto)}
@@ -86,6 +106,7 @@ const AdicionarProduto = ({
     </div>
   );
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>
@@ -101,6 +122,7 @@ const AdicionarProduto = ({
             <TabsTrigger value="categorias">Por Categoria</TabsTrigger>
           </TabsList>
 
+          {/* Aba busca: input + até 10 resultados */}
           <TabsContent value="busca" className="space-y-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -124,6 +146,7 @@ const AdicionarProduto = ({
             </div>
           </TabsContent>
 
+          {/* Aba categorias: select + lista completa filtrada */}
           <TabsContent value="categorias" className="space-y-4">
             <Select value={categoriaSelecionada} onValueChange={setCategoriaSelecionada}>
               <SelectTrigger>

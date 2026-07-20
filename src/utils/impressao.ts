@@ -1,3 +1,18 @@
+/**
+ * ============================================================
+ * impressao.ts
+ * ============================================================
+ * PAPEL: API de impressão do frontend (config + envio de jobs).
+ * QUEM USA: GerenciadorImpressora, ImpressaoCozinha, GerarConta e afins.
+ * O QUE FAZ:
+ *   - Carrega/salva config de impressão e de cozinha no localStorage.
+ *   - Escaneia impressoras via servidor local (GET /impressoras).
+ *   - Singleton GerenciadorImpressao: imprime via CUPS (POST /imprimir)
+ *     com fallback para diálogo nativo do navegador.
+ * FLUXO: carregar config → POST servidor → se falhar → NativePrinter
+ * ============================================================
+ */
+
 import {
   ConfiguracaoImpressao,
   ConfigImpressaoCozinha,
@@ -11,6 +26,7 @@ import {
 } from "@/types/printing";
 import { NativePrinterManager } from "./printing/printers/nativePrinter";
 
+// Reexporta tipos e constantes para consumidores importarem de um só lugar
 export type {
   ConfiguracaoImpressao,
   ConfigImpressaoCozinha,
@@ -25,6 +41,9 @@ export {
   CONFIG_COZINHA_PADRAO,
 };
 
+// ── Normalização de config ──
+
+/** Mescla parcial com defaults e normaliza URL (sem barra final) / impressora. */
 function normalizarConfig(
   parcial?: Partial<ConfiguracaoImpressao> | null
 ): ConfiguracaoImpressao {
@@ -38,6 +57,8 @@ function normalizarConfig(
     ),
   };
 }
+
+// ── Persistência de configuração ──
 
 /** Carrega a configuração salva na interface do Gerenciador de Impressoras */
 export function carregarConfiguracaoImpressao(): ConfiguracaoImpressao {
@@ -59,6 +80,7 @@ export function salvarConfiguracaoImpressao(
   return normalizada;
 }
 
+/** Preferências de layout do ticket de cozinha */
 export function carregarConfigCozinha(): ConfigImpressaoCozinha {
   try {
     const raw = localStorage.getItem(CHAVE_CONFIG_COZINHA);
@@ -77,12 +99,15 @@ export function salvarConfigCozinha(
   return normalizada;
 }
 
+/** Indica se já há impressora nomeada na config salva. */
 export function temImpressoraConfigurada(
   config?: ConfiguracaoImpressao
 ): boolean {
   const c = config || carregarConfiguracaoImpressao();
   return Boolean(c.impressora);
 }
+
+// ── Escaneamento via servidor local ──
 
 /** Escaneia impressoras instaladas no computador (servidor local CUPS) */
 export async function escanearImpressoras(
@@ -127,6 +152,12 @@ export async function escanearImpressoras(
   }
 }
 
+// ── Singleton de impressão ──
+
+/**
+ * Gerencia envio de conteúdo textual para impressora térmica.
+ * Ordem: servidor CUPS → iframe print nativo → janela manual.
+ */
 export class GerenciadorImpressao {
   private static instancia: GerenciadorImpressao;
 
@@ -137,6 +168,7 @@ export class GerenciadorImpressao {
     return GerenciadorImpressao.instancia;
   }
 
+  /** POST /imprimir no servidor local com conteúdo e nome da impressora. */
   private async imprimirViaServidor(
     conteudo: string,
     config: ConfiguracaoImpressao

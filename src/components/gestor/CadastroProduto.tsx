@@ -1,3 +1,15 @@
+/**
+ * ============================================================
+ * CadastroProduto.tsx
+ * ============================================================
+ * PAPEL: Container do formulário de cadastro de produtos (gestor).
+ * QUEM USA: pages/Index.tsx (aba Gestor).
+ * O QUE FAZ:
+ *   - Mantém estado do formulário (ProductFormData).
+ *   - Valida campos, monta Produto e chama onProdutoAdicionado.
+ *   - Delega UI para ProductForm + CommentsManager.
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,11 +20,12 @@ import { ProductFormData } from './types/ProductFormTypes';
 import ProductForm from './components/ProductForm';
 
 interface CadastroProdutoProps {
-  onProdutoAdicionado: (produto: Produto) => void;
+  onProdutoAdicionado: (produto: Produto) => void | Promise<void | Produto>;
   categorias: Categoria[];
 }
 
 const CadastroProduto = ({ onProdutoAdicionado, categorias }: CadastroProdutoProps) => {
+  // ── Estado do formulário (strings para inputs controlados) ──
   const [formData, setFormData] = useState<ProductFormData>({
     nome: '',
     valor: '',
@@ -22,6 +35,8 @@ const CadastroProduto = ({ onProdutoAdicionado, categorias }: CadastroProdutoPro
   });
   
   const { toast } = useToast();
+
+  // ── Handlers ──
 
   const handleFormDataChange = (data: Partial<ProductFormData>) => {
     setFormData(prev => ({ ...prev, ...data }));
@@ -37,7 +52,11 @@ const CadastroProduto = ({ onProdutoAdicionado, categorias }: CadastroProdutoPro
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  /**
+   * Valida obrigatórios, parseia números, filtra comentários vazios
+   * e grava no SQLite via API (useRestaurantData.adicionarProduto).
+   */
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const { nome, valor, cmv, categoria, comentarios } = formData;
@@ -51,7 +70,6 @@ const CadastroProduto = ({ onProdutoAdicionado, categorias }: CadastroProdutoPro
       return;
     }
 
-    // Filtrar comentários vazios
     const comentariosFiltrados = comentarios.filter(c => c && c.trim() !== '');
 
     const novoProduto: Produto = {
@@ -63,18 +81,23 @@ const CadastroProduto = ({ onProdutoAdicionado, categorias }: CadastroProdutoPro
       comentarios: comentariosFiltrados.length > 0 ? comentariosFiltrados : undefined
     };
 
-    console.log('Produto sendo criado:', novoProduto);
-    console.log('Comentários filtrados:', comentariosFiltrados);
-
-    onProdutoAdicionado(novoProduto);
-    resetForm();
-
-    toast({
-      title: "Produto cadastrado!",
-      description: `${nome} foi adicionado com sucesso`,
-    });
+    try {
+      await onProdutoAdicionado(novoProduto);
+      resetForm();
+      toast({
+        title: "Produto cadastrado no banco!",
+        description: `${nome} salvo com ${comentariosFiltrados.length} observação(ões) automática(s)`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao salvar no banco",
+        description: err?.message || "Falha ao gravar produto",
+        variant: "destructive",
+      });
+    }
   };
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>

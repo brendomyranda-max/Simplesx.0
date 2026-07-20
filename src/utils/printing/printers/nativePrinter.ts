@@ -1,8 +1,24 @@
+/**
+ * ============================================================
+ * nativePrinter.ts
+ * ============================================================
+ * PAPEL: Fallback de impressão pelo navegador (sem servidor CUPS).
+ * QUEM USA: GerenciadorImpressao em utils/impressao.ts.
+ * O QUE FAZ:
+ *   - imprimir: iframe oculto + window.print().
+ *   - abrirParaImpressaoManual: nova aba com auto-print.
+ * ============================================================
+ */
+
 import { ConfiguracaoImpressao } from "@/types/printing";
 import { HTMLFormatter } from "../formatters/html";
 
 /** Fallback: diálogo de impressão do navegador (quando o servidor CUPS está offline) */
 export class NativePrinterManager {
+  /**
+   * Cria iframe off-screen, escreve o HTML do ticket e dispara print().
+   * Remove o iframe após atraso para o diálogo carregar.
+   */
   public static async imprimir(
     conteudo: string,
     titulo: string,
@@ -29,6 +45,7 @@ export class NativePrinterManager {
       doc.write(HTMLFormatter.gerarHTMLCompleto(conteudo, titulo, config));
       doc.close();
 
+      // Aguarda renderização antes de abrir o diálogo de impressão
       setTimeout(() => {
         iframe.contentWindow?.print();
         setTimeout(() => {
@@ -42,6 +59,10 @@ export class NativePrinterManager {
     }
   }
 
+  /**
+   * Abre nova janela com o ticket e chama print() via script embutido.
+   * Usado quando o iframe falha (ex.: bloqueio de popup/iframe).
+   */
   public static abrirParaImpressaoManual(
     conteudo: string,
     titulo: string,

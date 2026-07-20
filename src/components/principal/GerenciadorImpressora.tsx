@@ -1,3 +1,17 @@
+/**
+ * ============================================================
+ * GerenciadorImpressora.tsx
+ * ============================================================
+ * PAPEL: UI para escolher e salvar a impressora térmica do POS.
+ * QUEM USA: CarrinhoTemporario (botão "Impressora") e fluxos de print.
+ * O QUE FAZ:
+ *   - Escaneia impressoras via servidor local (CUPS).
+ *   - Configura largura, fonte, margens e salva no localStorage.
+ *   - Teste de impressão com página de amostra.
+ * FLUXO: Abrir → Escanear → Selecionar → Salvar → jobs usam a config
+ * ============================================================
+ */
+
 import React, { useCallback, useState } from "react";
 import {
   Dialog,
@@ -34,6 +48,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 const GerenciadorImpressora = () => {
+  // ── Estado local ──
   const [open, setOpen] = useState(false);
   const [config, setConfig] = useState<ConfiguracaoImpressao>({
     ...CONFIG_IMPRESSAO_PADRAO,
@@ -44,6 +59,10 @@ const GerenciadorImpressora = () => {
   const [testando, setTestando] = useState(false);
   const { toast } = useToast();
 
+  /**
+   * Consulta o servidor local e atualiza lista/sugestão de impressora.
+   * silencioso=true evita toast (usado ao abrir o dialog).
+   */
   const escanear = useCallback(
     async (configAtual: ConfiguracaoImpressao, silencioso = false) => {
       setEscaneando(true);
@@ -110,10 +129,12 @@ const GerenciadorImpressora = () => {
     [toast]
   );
 
+  // Carrega config salva no mount
   React.useEffect(() => {
     setConfig(carregarConfiguracaoImpressao());
   }, []);
 
+  // Ao abrir o dialog: recarrega config e escaneia silenciosamente
   React.useEffect(() => {
     if (!open) return;
     const salva = carregarConfiguracaoImpressao();
@@ -121,6 +142,9 @@ const GerenciadorImpressora = () => {
     void escanear(salva, true);
   }, [open, escanear]);
 
+  // ── Handlers ──
+
+  /** Envia página de teste para validar impressora + servidor. */
   const testarImpressao = async () => {
     if (!config.impressora) {
       toast({
@@ -166,6 +190,7 @@ sua impressora está funcionando.
     }
   };
 
+  /** Persiste config no localStorage e fecha o dialog. */
   const salvarConfiguracoes = () => {
     if (!config.impressora) {
       toast({
@@ -185,6 +210,7 @@ sua impressora está funcionando.
     setOpen(false);
   };
 
+  /** Rótulo amigável do status CUPS. */
   const labelStatus = (status: string) => {
     if (status === "pronta") return "pronta";
     if (status === "desabilitada") return "desabilitada";
@@ -192,6 +218,7 @@ sua impressora está funcionando.
     return status || "disponível";
   };
 
+  // ── Render ──
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -209,6 +236,7 @@ sua impressora está funcionando.
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Seleção de impressora + botão escanear */}
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <Label>Impressora do computador</Label>

@@ -1,3 +1,17 @@
+/**
+ * ============================================================
+ * CarrinhoTemporario.tsx
+ * ============================================================
+ * PAPEL: Staging de itens antes de confirmar na comanda + impressão.
+ * QUEM USA: GerenciarComanda.tsx.
+ * O QUE FAZ:
+ *   - Edita quantidades e remove itens do carrinho.
+ *   - Gera texto da comanda e imprime (rápido ou layout cozinha).
+ *   - Confirma pedido (fica na mesa) ou envia e volta ao painel.
+ * FLUXO: AdicionarProduto → Carrinho → imprimir → onConfirmarPedido
+ * ============================================================
+ */
+
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +55,7 @@ const CarrinhoTemporario = ({
   mesaNumero,
   garcomNome,
 }: CarrinhoTemporarioProps) => {
+  // ── Estado local ──
   const { toast } = useToast();
   const [imprimindo, setImprimindo] = useState(false);
   const [modalCozinha, setModalCozinha] = useState(false);
@@ -52,6 +67,9 @@ const CarrinhoTemporario = ({
     );
   };
 
+  // ── Geração de ticket e impressão ──
+
+  /** Monta texto monoespaçado da comanda para produção. */
   const gerarConteudoComanda = (): string => {
     const dataHora = new Date().toLocaleString("pt-BR");
     let conteudo = `=================================
@@ -96,6 +114,7 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
     return conteudo;
   };
 
+  /** Envia comanda à impressora configurada (requer servidor ou fallback). */
   const imprimirComanda = async () => {
     if (itens.length === 0) {
       toast({
@@ -151,6 +170,7 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
     }
   };
 
+  /** Imprime e, se ok, confirma o pedido permanecendo na mesa. */
   const confirmarEImprimir = async () => {
     if (itens.length === 0) {
       toast({
@@ -172,6 +192,7 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
     }
   };
 
+  // ── Render: vazio só mostra botão de config de impressora ──
   if (itens.length === 0) {
     return (
       <div className="mt-4 flex justify-center">
@@ -180,6 +201,7 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
     );
   }
 
+  // ── Render: lista + ações de impressão/confirmação ──
   return (
     <Card className="mt-4">
       <CardHeader className="pb-3">
@@ -192,6 +214,7 @@ TOTAL: R$ ${calcularTotal().toFixed(2)}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Itens do carrinho com +/- e remover */}
         {itens.map((item, index) => {
           const nomeCompleto = item.produto_nome;
           const temObservacao =

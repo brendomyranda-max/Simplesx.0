@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ * RelatoriosAvancados.tsx
+ * ============================================================
+ * PAPEL: Relatórios gerenciais com filtros de período e garçom.
+ * QUEM USA: pages/Index.tsx (aba Gestor).
+ * O QUE FAZ:
+ *   - Filtra vendas por intervalo de datas e garçom de fechamento.
+ *   - Ranking top 10 produtos, performance por garçom e KPIs.
+ *   - Abas de visualização e opção de exportação (se implementada).
+ * ============================================================
+ */
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +27,12 @@ interface RelatoriosAvancadosProps {
 }
 
 const RelatoriosAvancados = ({ vendas }: RelatoriosAvancadosProps) => {
+  // ── Filtros de relatório ──
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
   const [filtroGarcom, setFiltroGarcom] = useState('todos');
+
+  // ── Dados derivados (memoizados) ──
 
   // Filtrar vendas por período e garçom
   const vendasFiltradas = useMemo(() => {
@@ -32,7 +48,7 @@ const RelatoriosAvancados = ({ vendas }: RelatoriosAvancadosProps) => {
     });
   }, [vendas, dataInicio, dataFim, filtroGarcom]);
 
-  // Ranking de produtos mais vendidos
+  // Ranking de produtos mais vendidos (ignora sufixo de observação no nome)
   const rankingProdutos = useMemo(() => {
     const produtos = new Map();
     
@@ -57,7 +73,7 @@ const RelatoriosAvancados = ({ vendas }: RelatoriosAvancadosProps) => {
       .slice(0, 10);
   }, [vendasFiltradas]);
 
-  // Performance por garçom
+  // Performance por garçom (receita, gorjetas, ticket médio)
   const performanceGarcom = useMemo(() => {
     const garcons = new Map();
     
@@ -87,7 +103,7 @@ const RelatoriosAvancados = ({ vendas }: RelatoriosAvancadosProps) => {
       .sort((a, b) => b.receita - a.receita);
   }, [vendasFiltradas]);
 
-  // Estatísticas gerais
+  // Estatísticas gerais do período filtrado
   const estatisticas = useMemo(() => {
     const totalVendas = vendasFiltradas.length;
     const receitaTotal = vendasFiltradas.reduce((acc, v) => acc + v.total_liquido, 0);
@@ -134,6 +150,7 @@ const RelatoriosAvancados = ({ vendas }: RelatoriosAvancadosProps) => {
     a.click();
   };
 
+  // ── Render: filtros + abas (resumo / produtos / garçons) ──
   return (
     <Card>
       <CardHeader>
@@ -143,7 +160,7 @@ const RelatoriosAvancados = ({ vendas }: RelatoriosAvancadosProps) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Filtros */}
+        {/* Filtros de período e garçom */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
           <div>
             <Label htmlFor="dataInicio">Data Início</Label>

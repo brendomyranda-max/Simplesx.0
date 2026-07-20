@@ -1,3 +1,15 @@
+/**
+ * ============================================================
+ * ListaItensComanda.tsx
+ * ============================================================
+ * PAPEL: Lista e edita itens já confirmados na comanda da mesa.
+ * QUEM USA: GerenciarComanda.tsx.
+ * O QUE FAZ:
+ *   - Altera quantidade (+/-) e recalcula valor_total.
+ *   - Remove item e limpa entradas relacionadas em por_pessoa.
+ *   - Exibe observação embutida no nome: "Produto (obs)".
+ * ============================================================
+ */
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,12 +20,15 @@ import { Comanda } from '@/types/restaurant';
 
 interface ListaItensComandaProps {
   comanda: Comanda;
-  onComandaAtualizada: (comanda: Comanda) => void;
+  onComandaAtualizada: (comanda: Comanda) => void | Promise<unknown>;
 }
 
 const ListaItensComanda = ({ comanda, onComandaAtualizada }: ListaItensComandaProps) => {
   const { toast } = useToast();
 
+  // ── Handlers ──
+
+  /** Ajusta quantidade e propaga o delta no valor_total da comanda. */
   const alterarQuantidade = (index: number, novaQuantidade: number) => {
     if (novaQuantidade < 1) return;
 
@@ -27,6 +42,9 @@ const ListaItensComanda = ({ comanda, onComandaAtualizada }: ListaItensComandaPr
     onComandaAtualizada(comandaAtualizada);
   };
 
+  /**
+   * Remove o item, subtrai do total e limpa referências em por_pessoa (split).
+   */
   const removerItem = (index: number) => {
     const comandaAtualizada = { ...comanda };
     const item = comandaAtualizada.itens[index];
@@ -52,6 +70,7 @@ const ListaItensComanda = ({ comanda, onComandaAtualizada }: ListaItensComandaPr
     });
   };
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>

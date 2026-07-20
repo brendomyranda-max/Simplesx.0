@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ * MesasAbertas.tsx
+ * ============================================================
+ * PAPEL: Lista todas as comandas abertas para gestão rápida.
+ * QUEM USA: pages/Index.tsx (modo === 'mesas-abertas').
+ * O QUE FAZ:
+ *   - Filtra por garçom quando filtrarPorGarcom está ativo.
+ *   - Exibe tempo desde abertura (baseado no id = timestamp).
+ *   - Permite gerenciar comanda ou fechar mesa vazia (sem itens).
+ * FLUXO: SelecionarMesa → MesasAbertas → GerenciarComanda
+ * ============================================================
+ */
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +47,7 @@ const MesasAbertas = ({
   garcomAtual,
   filtrarPorGarcom = false
 }: MesasAbertasProps) => {
+  // ── Filtro opcional: mesas do garçom atual (+ sem garçom definido) ──
   // Filtrar comandas por garçom se solicitado
   const comandasFiltradas = filtrarPorGarcom && garcomAtual 
     ? comandas.filter(comanda => 
@@ -42,6 +56,9 @@ const MesasAbertas = ({
       )
     : comandas;
 
+  /**
+   * Estima tempo de abertura usando o id da comanda (Date.now() na criação).
+   */
   const calcularTempoAbertura = (comanda: Comanda) => {
     // Simular tempo baseado no ID da comanda (timestamp)
     const agora = Date.now();
@@ -56,8 +73,10 @@ const MesasAbertas = ({
     return `${horas}h${minRestantes > 0 ? ` ${minRestantes}min` : ''}`;
   };
 
+  // ── Render ──
   return (
     <div className="space-y-4">
+      {/* Barra de título e voltar */}
       <div className="flex items-center gap-4">
         <Button 
           onClick={onVoltar}
@@ -78,6 +97,7 @@ const MesasAbertas = ({
         </div>
       </div>
 
+      {/* Estado vazio */}
       {comandasFiltradas.length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
@@ -88,6 +108,7 @@ const MesasAbertas = ({
           </CardContent>
         </Card>
       ) : (
+        /* Cards de cada comanda aberta */
         <div className="grid gap-4">
           {comandasFiltradas.map((comanda) => (
             <Card key={comanda.id} className="hover:shadow-md transition-shadow">
@@ -98,6 +119,7 @@ const MesasAbertas = ({
                     Mesa {comanda.mesa}
                   </CardTitle>
                   
+                  {/* Só permite fechar sem venda se não houver itens */}
                   {comanda.itens.length === 0 && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -132,6 +154,7 @@ const MesasAbertas = ({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
+                  {/* Meta: pessoas, tempo e garçom */}
                   <div className="flex items-center gap-4 text-sm text-gray-600">
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />

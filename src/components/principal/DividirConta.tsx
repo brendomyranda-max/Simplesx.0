@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ * DividirConta.tsx
+ * ============================================================
+ * PAPEL: Modal de divisão de conta + gorjeta no fechamento da mesa.
+ * QUEM USA: GerenciarComanda.tsx (ao clicar "Fechar Mesa").
+ * O QUE FAZ:
+ *   - Calcula gorjeta % e total com gorjeta.
+ *   - Divisão igual (n pessoas) ou valores personalizados por pessoa.
+ *   - onConfirmar devolve DivisaoConta para gerar a VendaDia.
+ * NOTA: Interface DivisaoConta local espelha a de types/restaurant.
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -15,6 +28,7 @@ interface DividirContaProps {
   onConfirmar: (divisao: DivisaoConta) => void;
 }
 
+/** Payload de divisão confirmado no fechamento (exportado para o pai). */
 export interface DivisaoConta {
   tipo: 'igual' | 'personalizado';
   pessoas: number;
@@ -23,15 +37,18 @@ export interface DivisaoConta {
 }
 
 const DividirConta = ({ open, onOpenChange, valorTotal, onConfirmar }: DividirContaProps) => {
+  // ── Estado do formulário de divisão ──
   const [tipoDivisao, setTipoDivisao] = useState<'igual' | 'personalizado'>('igual');
   const [numeroPessoas, setNumeroPessoas] = useState(1);
   const [porcentagemGarcom, setPorcentagemGarcom] = useState(10);
   const [divisaoPersonalizada, setDivisaoPersonalizada] = useState<{ pessoa: string; valor: number }[]>([]);
 
+  // ── Derivados financeiros ──
   const valorGarcom = (valorTotal * porcentagemGarcom) / 100;
   const valorComGarcom = valorTotal + valorGarcom;
   const valorPorPessoa = valorComGarcom / numeroPessoas;
 
+  // ── Handlers divisão personalizada ──
   const adicionarPessoa = () => {
     setDivisaoPersonalizada([...divisaoPersonalizada, { pessoa: `Pessoa ${divisaoPersonalizada.length + 1}`, valor: 0 }]);
   };
@@ -46,6 +63,7 @@ const DividirConta = ({ open, onOpenChange, valorTotal, onConfirmar }: DividirCo
     setDivisaoPersonalizada(divisaoPersonalizada.filter((_, i) => i !== index));
   };
 
+  // Diferença deve ser ~0 para habilitar confirmação no modo personalizado
   const totalPersonalizado = divisaoPersonalizada.reduce((acc, div) => acc + div.valor, 0);
   const diferenca = valorComGarcom - totalPersonalizado;
 
@@ -59,6 +77,7 @@ const DividirConta = ({ open, onOpenChange, valorTotal, onConfirmar }: DividirCo
     onConfirmar(divisao);
   };
 
+  // ── Render ──
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

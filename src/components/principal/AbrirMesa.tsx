@@ -1,3 +1,15 @@
+/**
+ * ============================================================
+ * AbrirMesa.tsx
+ * ============================================================
+ * PAPEL: Formulário para abrir uma mesa livre e criar a comanda.
+ * QUEM USA: pages/Index.tsx (modo === 'abrir').
+ * O QUE FAZ:
+ *   - Coleta nº de pessoas e flag de split.
+ *   - Monta objeto Comanda (aberta, sem itens) e chama onMesaAberta.
+ * FLUXO: SelecionarMesa (livre) → AbrirMesa → GerenciarComanda
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,10 +28,17 @@ interface AbrirMesaProps {
 }
 
 const AbrirMesa = ({ mesa, onMesaAberta, onVoltar }: AbrirMesaProps) => {
+  // ── Estado do formulário ──
   const [pessoas, setPessoas] = useState('1'); // Definindo 1 como padrão
   const [splitAtivo, setSplitAtivo] = useState(false);
   const { toast } = useToast();
 
+  // ── Handlers ──
+
+  /**
+   * Valida pessoas e cria comanda vazia com id baseado em timestamp.
+   * Persistência real fica no pai (abrirMesa do useRestaurantData).
+   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -51,6 +70,7 @@ const AbrirMesa = ({ mesa, onMesaAberta, onVoltar }: AbrirMesaProps) => {
     });
   };
 
+  // ── Render ──
   return (
     <Card className="max-w-md mx-auto">
       <CardHeader>
@@ -61,6 +81,7 @@ const AbrirMesa = ({ mesa, onMesaAberta, onVoltar }: AbrirMesaProps) => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Mesa (somente leitura) */}
           <div>
             <Label htmlFor="mesa" className="flex items-center gap-2">
               <Coffee className="h-4 w-4" />
@@ -74,6 +95,7 @@ const AbrirMesa = ({ mesa, onMesaAberta, onVoltar }: AbrirMesaProps) => {
             />
           </div>
 
+          {/* Número de pessoas (base para divisão de conta) */}
           <div>
             <Label htmlFor="pessoas" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -90,6 +112,7 @@ const AbrirMesa = ({ mesa, onMesaAberta, onVoltar }: AbrirMesaProps) => {
             />
           </div>
 
+          {/* Flag de split por pessoa na comanda */}
           <div className="flex items-center space-x-2">
             <Checkbox
               id="split"

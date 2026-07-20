@@ -1,18 +1,59 @@
+/**
+ * ============================================================
+ * ListaProdutos.tsx
+ * ============================================================
+ * PAPEL: Catálogo do cardápio lido do SQLite (com exclusão).
+ * QUEM USA: pages/Index.tsx (aba Gestor).
+ * O QUE FAZ:
+ *   - Busca por nome/categoria.
+ *   - Agrupa produtos em tabelas por categoria.
+ *   - Exibe valor, CMV, margem e observações.
+ *   - Remove produto do banco sob demanda.
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Package, DollarSign, TrendingDown } from 'lucide-react';
+import { Search, Package, DollarSign, TrendingDown, Trash2 } from 'lucide-react';
 import { Produto } from '@/types/restaurant';
+import { useToast } from '@/hooks/use-toast';
 
 interface ListaProdutosProps {
   produtos: Produto[];
+  onProdutoRemovido?: (id: string) => void | Promise<void>;
 }
 
-const ListaProdutos = ({ produtos }: ListaProdutosProps) => {
+const ListaProdutos = ({ produtos, onProdutoRemovido }: ListaProdutosProps) => {
+  // ── Estado: filtro de busca ──
   const [busca, setBusca] = useState('');
+  const [removendoId, setRemovendoId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleRemover = async (produto: Produto) => {
+    if (!onProdutoRemovido) return;
+    if (!window.confirm(`Remover "${produto.nome}" do cardápio?`)) return;
+
+    try {
+      setRemovendoId(produto.id);
+      await onProdutoRemovido(produto.id);
+      toast({
+        title: 'Produto removido',
+        description: `${produto.nome} apagado do banco de dados`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Erro ao remover',
+        description: err?.message || 'Falha ao apagar produto no banco',
+        variant: 'destructive',
+      });
+    } finally {
+      setRemovendoId(null);
+    }
+  };
 
   const produtosFiltrados = produtos.filter(produto =>
     produto.nome.toLowerCase().includes(busca.toLowerCase()) ||
@@ -27,6 +68,7 @@ const ListaProdutos = ({ produtos }: ListaProdutosProps) => {
     return acc;
   }, {} as Record<string, Produto[]>);
 
+  /** Cor de badge determinística a partir do nome da categoria. */
   const getCategoriaColor = (categoria: string) => {
     const colors = [
       'bg-blue-100 text-blue-800',
@@ -42,6 +84,7 @@ const ListaProdutos = ({ produtos }: ListaProdutosProps) => {
     return colors[index];
   };
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>
@@ -60,6 +103,7 @@ const ListaProdutos = ({ produtos }: ListaProdutosProps) => {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Uma tabela por categoria (só se houver produtos filtrados) */}
         <div className="space-y-6">
           {categorias.map((categoria) => {
             const produtosCategoria = produtosPorCategoria[categoria];
@@ -79,14 +123,18 @@ const ListaProdutos = ({ produtos }: ListaProdutosProps) => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Produto</TableHead>
+                        <TableHead>Observações</TableHead>
                         <TableHead className="text-right">Valor</TableHead>
                         <TableHead className="text-right">CMV</TableHead>
                         <TableHead className="text-right">Margem</TableHead>
+                        {onProdutoRemovido && <TableHead className="w-12" />}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {produtosCategoria.map((produto) => {
-                        const margem = ((produto.valor - produto.cmv) / produto.valor * 100);
+                        const margem = produto.valor > 0
+                          ? ((produto.valor - produto.cmv) / produto.valor * 100)
+                          : 0;
                         return (
                           <TableRow key={produto.id}>
                             <TableCell>
@@ -94,6 +142,19 @@ const ListaProdutos = ({ produtos }: ListaProdutosProps) => {
                                 <p className="font-medium">{produto.nome}</p>
                                 {produto.imagem && (
                                   <p className="text-xs text-gray-500">Com imagem</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1 max-w-xs">
+                                {(produto.comentarios || []).length > 0 ? (
+                                  produto.comentarios!.map((c, i) => (
+                                    <Badge key={i} variant="outline" className="text-xs font-normal">
+                                      {c}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-xs text-gray-400">—</span>
                                 )}
                               </div>
                             </TableCell>
@@ -118,6 +179,21 @@ const ListaProdutos = ({ produtos }: ListaProdutosProps) => {
                                 {margem.toFixed(1)}%
                               </span>
                             </TableCell>
+                            {onProdutoRemovido && (
+                              <TableCell className="text-right">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  disabled={removendoId === produto.id}
+                                  onClick={() => handleRemover(produto)}
+                                  title="Remover do banco"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })}

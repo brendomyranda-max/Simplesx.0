@@ -1,3 +1,20 @@
+/**
+ * ============================================================
+ * GerenciarComanda.tsx
+ * ============================================================
+ * PAPEL: Hub da operação de uma mesa aberta (lançar, conta, fechar).
+ * QUEM USA: pages/Index.tsx (modo === 'gerenciar').
+ * O QUE FAZ:
+ *   - Mantém comanda local sincronizada com o estado global.
+ *   - Carrinho temporário antes de confirmar pedido na comanda.
+ *   - Integra: adicionar produtos, lista de itens, gerar conta,
+ *     dividir/fechar mesa e cancelar (despesa de CMV).
+ * FLUXO:
+ *   AdicionarProduto → carrinho → confirmar → itens na comanda
+ *   → GerarConta / Fechar (DividirConta) / Excluir mesa
+ * ============================================================
+ */
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calculator, Trash2, Receipt } from 'lucide-react';
@@ -25,9 +42,9 @@ import {
 interface GerenciarComandaProps {
   comanda: Comanda;
   produtos: Produto[];
-  onComandaAtualizada: (comanda: Comanda) => void;
-  onComandaFechada: (venda: VendaDia) => void;
-  onMesaExcluida: (comandaId: string, mesaNumero: number) => void;
+  onComandaAtualizada: (comanda: Comanda) => void | Promise<unknown>;
+  onComandaFechada: (venda: VendaDia) => void | Promise<unknown>;
+  onMesaExcluida: (comandaId: string, mesaNumero: number) => void | Promise<unknown>;
   onVoltar: () => void;
   onVerMesasAbertas: () => void;
   comandasAbertas: Comanda[];
@@ -45,12 +62,15 @@ const GerenciarComanda = ({
   comandasAbertas,
   obterComandaAtualizada
 }: GerenciarComandaProps) => {
+  // ── Estado local ──
   const [mostrarDivisao, setMostrarDivisao] = useState(false);
   const [mostrarGerarConta, setMostrarGerarConta] = useState(false);
   const [comandaAtual, setComandaAtual] = useState(comandaInicial);
+  /** Itens ainda não confirmados na comanda (staging antes do pedido) */
   const [carrinhoTemporario, setCarrinhoTemporario] = useState<ItemComanda[]>([]);
   const { toast } = useToast();
 
+  // ── Sincroniza com a fonte de verdade quando comandas mudam ──
   // Sempre usar a versão mais atualizada da comanda
   useEffect(() => {
     const comandaAtualizada = obterComandaAtualizada(comandaInicial.id);
@@ -59,10 +79,14 @@ const GerenciarComanda = ({
     }
   }, [comandaInicial.id, obterComandaAtualizada, comandasAbertas]);
 
+  // ── Cálculos ──
+
+  /** Soma dos itens já na comanda (sem gorjeta). */
   const calcularTotal = () => {
     return comandaAtual.itens.reduce((total, item) => total + (item.valor_unitario * item.quantidade), 0);
   };
 
+  /** Custo (CMV) total dos itens — usado no cancelamento como despesa. */
   const calcularCMV = () => {
     return comandaAtual.itens.reduce((total, item) => {
       const produto = produtos.find(p => p.nome === item.produto_nome || item.produto_nome.startsWith(p.nome));
@@ -70,6 +94,9 @@ const GerenciarComanda = ({
     }, 0);
   };
 
+  // ── Handlers do carrinho temporário ──
+
+  /** Adiciona produto ao carrinho; observação vira sufixo no nome: "Produto (obs)". */
   const adicionarAoCarrinho = (produto: Produto, quantidade: number, comentario?: string, garcom?: string) => {
     const nomeCompleto = comentario ? `${produto.nome} (${comentario})` : produto.nome;
     const itemExistente = carrinhoTemporario.findIndex(item => item.produto_nome === nomeCompleto);
@@ -106,17 +133,27 @@ const GerenciarComanda = ({
     setCarrinhoTemporario(novoCarrinho);
   };
 
-  const confirmarPedido = () => {
+  /**
+   * Consolida o carrinho na comanda (merge por nome) e grava no SQLite.
+   */
+  const confirmarPedido = async () => {
     if (carrinhoTemporario.length === 0) return;
 
-    const comandaAtualizada = { ...comandaAtual };
+    const comandaAtualizada = {
+      ...comandaAtual,
+      itens: [...comandaAtual.itens],
+    };
     carrinhoTemporario.forEach(itemCarrinho => {
       const itemExistente = comandaAtualizada.itens.findIndex(
         item => item.produto_nome === itemCarrinho.produto_nome
       );
 
       if (itemExistente >= 0) {
-        comandaAtualizada.itens[itemExistente].quantidade += itemCarrinho.quantidade;
+        comandaAtualizada.itens[itemExistente] = {
+          ...comandaAtualizada.itens[itemExistente],
+          quantidade:
+            comandaAtualizada.itens[itemExistente].quantidade + itemCarrinho.quantidade,
+        };
       } else {
         comandaAtualizada.itens.push({ ...itemCarrinho });
       }
@@ -124,20 +161,30 @@ const GerenciarComanda = ({
       comandaAtualizada.valor_total += itemCarrinho.valor_unitario * itemCarrinho.quantidade;
     });
 
-    setComandaAtual(comandaAtualizada);
-    onComandaAtualizada(comandaAtualizada);
-    setCarrinhoTemporario([]);
-
-    toast({
-      title: "Pedido confirmado!",
-      description: `Itens adicionados à mesa ${comandaAtual.mesa}`,
-    });
+    try {
+      await onComandaAtualizada(comandaAtualizada);
+      setComandaAtual(comandaAtualizada);
+      setCarrinhoTemporario([]);
+      toast({
+        title: "Pedido confirmado!",
+        description: `Itens salvos no banco — mesa ${comandaAtual.mesa}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Erro ao salvar pedido",
+        description: err?.message || "Falha ao gravar no banco",
+        variant: "destructive",
+      });
+    }
   };
 
   const limparCarrinho = () => {
     setCarrinhoTemporario([]);
   };
 
+  // ── Handlers de conta / fechamento / exclusão ──
+
+  /** Callback do modal GerarConta (impressão fica no próprio modal). */
   const handleGerarConta = (porcentagem: number, tipoDivisao: 'igual' | 'personalizado', divisaoPersonalizada?: { pessoa: string; valor: number }[]) => {
     setMostrarGerarConta(false);
     
@@ -147,6 +194,7 @@ const GerenciarComanda = ({
     });
   };
 
+  /** Abre modal de divisão para fechar a mesa (exige itens). */
   const fecharMesa = () => {
     const comandaParaFechar = obterComandaAtualizada(comandaAtual.id);
     if (!comandaParaFechar || comandaParaFechar.status === 'fechada') {
@@ -192,6 +240,9 @@ const GerenciarComanda = ({
     });
   };
 
+  /**
+   * Monta VendaDia (bruto, gorjeta, CMV, líquido) e notifica o pai para fechar.
+   */
   const confirmarFechamento = (divisao: DivisaoConta) => {
     const comandaParaFechar = obterComandaAtualizada(comandaAtual.id);
     if (!comandaParaFechar) {
@@ -235,11 +286,13 @@ const GerenciarComanda = ({
     });
   };
 
-  const handleComandaAtualizada = (comandaAtualizada: Comanda) => {
+  /** Propaga alteração de itens (lista) para estado local + banco. */
+  const handleComandaAtualizada = async (comandaAtualizada: Comanda) => {
     setComandaAtual(comandaAtualizada);
-    onComandaAtualizada(comandaAtualizada);
+    await onComandaAtualizada(comandaAtualizada);
   };
 
+  // ── Render ──
   return (
     <div className="space-y-6">
       <MesaHeader 
@@ -273,6 +326,7 @@ const GerenciarComanda = ({
         onComandaAtualizada={handleComandaAtualizada}
       />
 
+      {/* Ações finais: conta, fechar com venda, cancelar mesa */}
       <div className="flex gap-2">
         <Button
           onClick={() => setMostrarGerarConta(true)}

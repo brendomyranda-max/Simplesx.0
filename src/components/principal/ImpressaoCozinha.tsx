@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ * ImpressaoCozinha.tsx
+ * ============================================================
+ * PAPEL: Modal de layout customizado do ticket de cozinha.
+ * QUEM USA: CarrinhoTemporario ("Cozinha Custom").
+ * O QUE FAZ:
+ *   - Configura quais campos exibir (horário, mesa, garçom, obs).
+ *   - Cabeçalho/rodapé personalizados e tamanho de fonte.
+ *   - Preview em tempo real e impressão do pedido.
+ * ============================================================
+ */
+
 import React, { useState } from "react";
 import {
   Dialog,
@@ -45,18 +58,23 @@ const ImpressaoCozinha = ({
   mesaNumero,
   garcomNome,
 }: ImpressaoCozinhaProps) => {
+  // ── Estado local ──
   const { toast } = useToast();
   const [config, setConfig] = useState<ConfigImpressaoCozinha>({
     ...CONFIG_COZINHA_PADRAO,
   });
   const [imprimindo, setImprimindo] = useState(false);
 
+  // Carrega preferências de layout ao abrir o modal
   React.useEffect(() => {
     if (isOpen) {
       setConfig(carregarConfigCozinha());
     }
   }, [isOpen]);
 
+  // ── Geração do ticket ──
+
+  /** Formata uma linha de item (qtd, nome, observação opcional). */
   const gerarLinhaItem = (item: ItemComanda): string => {
     const nomeCompleto = item.produto_nome;
     const temObservacao =
@@ -76,6 +94,7 @@ const ImpressaoCozinha = ({
     return linha;
   };
 
+  /** Monta o texto completo do pedido conforme switches de layout. */
   const gerarConteudoPedido = (): string => {
     const hora = new Date().toLocaleTimeString("pt-BR", {
       hour: "2-digit",
@@ -108,6 +127,9 @@ const ImpressaoCozinha = ({
     return conteudo;
   };
 
+  // ── Handlers ──
+
+  /** Imprime o pedido usando impressora do app + fonte do layout cozinha. */
   const imprimirPedido = async () => {
     if (!temImpressoraConfigurada()) {
       toast({
@@ -159,6 +181,7 @@ const ImpressaoCozinha = ({
     }
   };
 
+  /** Persiste preferências de layout de cozinha no localStorage. */
   const salvarConfiguracao = () => {
     salvarConfigCozinha(config);
     toast({
@@ -170,6 +193,7 @@ const ImpressaoCozinha = ({
   const previewConteudo = gerarConteudoPedido();
   const impressoraAtiva = carregarConfiguracaoImpressao().impressora;
 
+  // ── Render: config (esq.) + preview (dir.) ──
   return (
     <Dialog open={isOpen} onOpenChange={(aberto) => { if (!aberto) onClose(); }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -181,6 +205,7 @@ const ImpressaoCozinha = ({
         </DialogHeader>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Coluna de configuração do layout */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -334,6 +359,7 @@ const ImpressaoCozinha = ({
             </CardContent>
           </Card>
 
+          {/* Coluna de preview + ações de impressão */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">

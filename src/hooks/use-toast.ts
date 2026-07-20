@@ -1,3 +1,17 @@
+/**
+ * ============================================================
+ * use-toast.ts
+ * ============================================================
+ * PAPEL: Sistema global de toasts (notificações) do shadcn/ui.
+ * QUEM USA: Componentes via `toast()` ou `useToast()`; Toaster em App.
+ * O QUE FAZ:
+ *   - Mantém estado em memória (memoryState) + listeners (pub/sub).
+ *   - Reducer: ADD / UPDATE / DISMISS / REMOVE de toasts.
+ *   - Limite de toasts simultâneos (TOAST_LIMIT) e fila de remoção.
+ * FLUXO: toast({ title }) → dispatch ADD → listeners atualizam UI
+ * ============================================================
+ */
+
 import * as React from "react"
 
 import type {
@@ -5,6 +19,7 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
+// ── Constantes de comportamento ──
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
 
@@ -22,6 +37,7 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
+// Contador monotônico para ids únicos de toast
 let count = 0
 
 function genId() {
@@ -53,6 +69,7 @@ interface State {
   toasts: ToasterToast[]
 }
 
+// ── Fila de remoção com delay (evita remover antes da animação) ──
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 const addToRemoveQueue = (toastId: string) => {
@@ -71,6 +88,7 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
+// ── Reducer: mutações puras do estado de toasts ──
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
@@ -92,6 +110,7 @@ export const reducer = (state: State, action: Action): State => {
 
       // ! Side effects ! - This could be extracted into a dismissToast() action,
       // but I'll keep it here for simplicity
+      // Agenda remoção e marca open=false (fecha visualmente)
       if (toastId) {
         addToRemoveQueue(toastId)
       } else {
@@ -126,6 +145,7 @@ export const reducer = (state: State, action: Action): State => {
   }
 }
 
+// ── Store em memória + lista de assinantes (padrão mini-store) ──
 const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
@@ -139,6 +159,10 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+/**
+ * API imperativa: cria um toast e retorna { id, dismiss, update }.
+ * Pode ser chamada fora de componentes React.
+ */
 function toast({ ...props }: Toast) {
   const id = genId()
 
@@ -168,6 +192,10 @@ function toast({ ...props }: Toast) {
   }
 }
 
+/**
+ * Hook React: sincroniza o estado de toasts com o componente.
+ * Expõe toast(), dismiss() e a lista atual.
+ */
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 

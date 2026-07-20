@@ -1,3 +1,14 @@
+/**
+ * ============================================================
+ * VendasDia.tsx
+ * ============================================================
+ * PAPEL: Dashboard simples de vendas com filtro por data.
+ * QUEM USA: pages/Index.tsx (aba Gestor).
+ * O QUE FAZ:
+ *   - Agrega bruto, gorjeta, custo e líquido das vendas filtradas.
+ *   - Lista cada venda com itens e totais.
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +22,7 @@ interface VendasDiaProps {
 }
 
 const VendasDia = ({ vendas }: VendasDiaProps) => {
+  // ── Filtro opcional por dia (YYYY-MM-DD) ──
   const [filtroData, setFiltroData] = useState('');
 
   const vendasFiltradas = vendas.filter(venda => {
@@ -18,6 +30,7 @@ const VendasDia = ({ vendas }: VendasDiaProps) => {
     return venda.data.toISOString().split('T')[0] === filtroData;
   });
 
+  // Soma dos indicadores financeiros no período filtrado
   const totalVendas = vendasFiltradas.reduce((acc, venda) => ({
     bruto: acc.bruto + venda.total_bruto,
     custo: acc.custo + venda.total_custo,
@@ -25,6 +38,7 @@ const VendasDia = ({ vendas }: VendasDiaProps) => {
     gorjeta: acc.gorjeta + (venda.valor_gorjeta || 0)
   }), { bruto: 0, custo: 0, liquido: 0, gorjeta: 0 });
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>
@@ -47,6 +61,7 @@ const VendasDia = ({ vendas }: VendasDiaProps) => {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Cards de KPI */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <div className="flex items-center gap-2 text-blue-700">

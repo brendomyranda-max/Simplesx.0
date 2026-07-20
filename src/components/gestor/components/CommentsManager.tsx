@@ -1,3 +1,15 @@
+/**
+ * ============================================================
+ * CommentsManager.tsx
+ * ============================================================
+ * PAPEL: Editor de lista de comentários/opções rápidas do produto.
+ * QUEM USA: ProductForm.tsx (cadastro de produto).
+ * O QUE FAZ:
+ *   - Adiciona, edita e remove strings de comentário.
+ *   - Garante pelo menos um campo vazio visível na UI.
+ *   - Esses textos viram sugestões ao lançar o item na comanda.
+ * ============================================================
+ */
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +26,8 @@ const CommentsManager = ({ comentarios, onComentariosChange }: CommentsManagerPr
   // Garantir que sempre temos pelo menos um campo de comentário
   const comentariosExibidos = comentarios.length === 0 ? [''] : comentarios;
 
+  // ── Handlers ──
+
   const adicionarComentario = () => {
     onComentariosChange([...comentariosExibidos, '']);
   };
@@ -29,6 +43,7 @@ const CommentsManager = ({ comentarios, onComentariosChange }: CommentsManagerPr
     onComentariosChange(novosComentarios);
   };
 
+  // ── Render ──
   return (
     <div>
       <div className="flex items-center justify-between mb-2">

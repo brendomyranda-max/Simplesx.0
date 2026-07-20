@@ -1,3 +1,13 @@
+/**
+ * ============================================================
+ * CadastroMesas.tsx
+ * ============================================================
+ * PAPEL: Visão gerencial das mesas 1–100 (somente leitura).
+ * QUEM USA: pages/Index.tsx (aba Gestor).
+ * O QUE FAZ: Conta disponíveis/ocupadas e mostra grade colorida.
+ *            Não permite criar/editar mesas (seed fixo no hook).
+ * ============================================================
+ */
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +20,11 @@ interface CadastroMesasProps {
 }
 
 const CadastroMesas = ({ mesas }: CadastroMesasProps) => {
+  // ── Contadores de status ──
   const mesasDisponiveis = mesas.filter(m => m.status === 'disponivel').length;
   const mesasOcupadas = mesas.filter(m => m.status === 'ocupada').length;
 
+  // ── Render ──
   return (
     <Card>
       <CardHeader>
@@ -34,6 +46,7 @@ const CadastroMesas = ({ mesas }: CadastroMesasProps) => {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Grade visual de todas as mesas */}
         <div className="grid grid-cols-10 gap-2 max-h-96 overflow-y-auto">
           {mesas.map((mesa) => (
             <div

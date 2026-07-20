@@ -1,3 +1,14 @@
+/**
+ * ============================================================
+ * FiltroGarcom.tsx
+ * ============================================================
+ * PAPEL: Identificação do garçom e filtro "minhas mesas".
+ * QUEM USA: pages/Index.tsx (sempre visível na aba Principal).
+ * O QUE FAZ:
+ *   - Input do nome do garçom (atribuído a comandas/vendas no Index).
+ *   - Checkbox para filtrar lista de mesas abertas pelo garçom.
+ * ============================================================
+ */
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +25,7 @@ interface FiltroGarcomProps {
 }
 
 const FiltroGarcom = ({ onGarcomChange, onFiltroMeusChange, garcomAtual, filtrarMeus }: FiltroGarcomProps) => {
+  // ── Render (componente controlado pelo pai) ──
   return (
     <Card className="mb-4">
       <CardHeader className="pb-3">
@@ -23,6 +35,7 @@ const FiltroGarcom = ({ onGarcomChange, onFiltroMeusChange, garcomAtual, filtrar
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Nome usado em abertura de mesa e fechamento de venda */}
         <div>
           <Label htmlFor="garcom" className="text-sm">Nome do Garçom</Label>
           <Input
@@ -34,6 +47,7 @@ const FiltroGarcom = ({ onGarcomChange, onFiltroMeusChange, garcomAtual, filtrar
           />
         </div>
         
+        {/* Aplica filtro em MesasAbertas quando ativo */}
         <div className="flex items-center space-x-2">
           <Checkbox
             id="filtrar-meus"

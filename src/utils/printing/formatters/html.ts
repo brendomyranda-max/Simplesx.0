@@ -1,7 +1,22 @@
+/**
+ * ============================================================
+ * html.ts (formatters)
+ * ============================================================
+ * PAPEL: Gera HTML/CSS para impressão térmica via navegador.
+ * QUEM USA: NativePrinterManager (fallback quando CUPS está offline).
+ * O QUE FAZ:
+ *   - Monta estilos @page e body com largura, fonte e margens da config.
+ *   - Gera documento HTML completo com o conteúdo em <pre>.
+ * ============================================================
+ */
+
 import { ConfiguracaoImpressao } from "@/types/printing";
 
 /** Estilos e HTML para fallback de impressão pelo navegador */
 export class HTMLFormatter {
+  /**
+   * CSS embutido para papel térmico (largura em mm, monospace, @media print).
+   */
   public static gerarEstilosImpressao(
     config?: Partial<ConfiguracaoImpressao>
   ): string {
@@ -9,6 +24,7 @@ export class HTMLFormatter {
     const altura = config?.altura || "200mm";
     const tamanhoFonte = config?.tamanhoFonte || "9px";
     const margens = config?.margens || "1mm";
+    // Calcula área útil descontando margens laterais
     const larguraNum = parseInt(largura, 10) || 80;
     const margensNum = parseInt(margens, 10) || 1;
     const larguraConteudo = `${larguraNum - margensNum * 2}mm`;
@@ -57,6 +73,9 @@ export class HTMLFormatter {
     `;
   }
 
+  /**
+   * Documento HTML completo pronto para document.write / iframe.print().
+   */
   public static gerarHTMLCompleto(
     conteudo: string,
     titulo: string,

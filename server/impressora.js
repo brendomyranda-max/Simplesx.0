@@ -1,3 +1,18 @@
+/**
+ * ============================================================
+ * impressora.js (server)
+ * ============================================================
+ * PAPEL: Servidor Express local que fala com o CUPS do sistema.
+ * QUEM USA: Frontend via fetch (utils/impressao.ts) em localhost:3001.
+ * O QUE FAZ:
+ *   GET  /status       — healthcheck
+ *   GET  /impressoras  — lista impressoras (lpstat -p -d)
+ *   POST /imprimir     — envia texto para lp (-d nome)
+ * FLUXO: npm run server → app escuta 0.0.0.0:3001 → CUPS imprime
+ * REQUISITO: CUPS instalado (comandos lp / lpstat no PATH).
+ * ============================================================
+ */
+
 import express from "express";
 import cors from "cors";
 import { execFile, spawn } from "child_process";
@@ -7,8 +22,11 @@ const execFileAsync = promisify(execFile);
 const app = express();
 const PORT = 3001;
 
+// ── Middlewares ──
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+
+// ── Integração CUPS: listagem ──
 
 /**
  * Lista impressoras instaladas no CUPS (lpstat).
@@ -17,6 +35,7 @@ app.use(express.json({ limit: "2mb" }));
 async function listarImpressorasSistema() {
   let stdout = "";
   try {
+    // LC_ALL=C força saída em inglês quando possível; ainda tratamos PT
     const result = await execFileAsync("lpstat", ["-p", "-d"], {
       timeout: 10000,
       env: { ...process.env, LC_ALL: "C", LANG: "C" },
@@ -44,6 +63,7 @@ async function listarImpressorasSistema() {
     if (match) {
       const nome = match[1];
       const resto = match[2].toLowerCase();
+      // Mapeia texto CUPS → status normalizado do app
       const status =
         resto.includes("idle") || resto.includes("inativa") || resto.includes("pronta")
           ? "pronta"
@@ -71,6 +91,12 @@ async function listarImpressorasSistema() {
   return { impressoras, padrao };
 }
 
+// ── Integração CUPS: envio de job ──
+
+/**
+ * Envia `conteudo` para a fila CUPS via comando `lp`.
+ * Se `impressora` for omitida, usa a padrão do sistema.
+ */
 function imprimirComLp(conteudo, impressora) {
   return new Promise((resolve, reject) => {
     const args = impressora ? ["-d", impressora] : [];
@@ -93,11 +119,15 @@ function imprimirComLp(conteudo, impressora) {
       }
     });
 
+    // Conteudo do ticket é texto puro (UTF-8) no stdin do lp
     processo.stdin.write(conteudo, "utf8");
     processo.stdin.end();
   });
 }
 
+// ── Rotas HTTP ──
+
+/** GET /impressoras — escaneia impressoras e destino padrão */
 app.get("/impressoras", async (_req, res) => {
   try {
     const { impressoras, padrao } = await listarImpressorasSistema();
@@ -117,10 +147,15 @@ app.get("/impressoras", async (_req, res) => {
   }
 });
 
+/** GET /status — healthcheck simples */
 app.get("/status", (_req, res) => {
   res.json({ ok: true, servico: "impressao", porta: PORT });
 });
 
+/**
+ * POST /imprimir — body: { conteudo: string, impressora?: string }
+ * Valida se a impressora existe (quando informada) e envia ao CUPS.
+ */
 app.post("/imprimir", async (req, res) => {
   const { conteudo, impressora } = req.body || {};
 
@@ -160,6 +195,7 @@ app.post("/imprimir", async (req, res) => {
   }
 });
 
+// ── Bootstrap ──
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor de impressão ativo em http://0.0.0.0:${PORT}`);
   console.log("  GET  /impressoras  — escaneia impressoras do computador");

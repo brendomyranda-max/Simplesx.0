@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ * SelecionarMesa.tsx
+ * ============================================================
+ * PAPEL: Tela inicial do salão — mapa de mesas disponíveis/ocupadas.
+ * QUEM USA: pages/Index.tsx (modo === 'selecionar').
+ * O QUE FAZ:
+ *   - Lista mesas livres (verde) e ocupadas (vermelho).
+ *   - Atalho "Ver Mesas Abertas" quando há comandas abertas.
+ *   - Clique em mesa chama onSelecionarMesa (abrir ou gerenciar).
+ * FLUXO: Index → SelecionarMesa → AbrirMesa | GerenciarComanda
+ * ============================================================
+ */
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,11 +27,14 @@ interface SelecionarMesaProps {
 }
 
 const SelecionarMesa = ({ mesas, onSelecionarMesa, comandasAbertas, onVerMesasAbertas }: SelecionarMesaProps) => {
+  // ── Derivados: separa mesas por status ──
   const mesasDisponiveis = mesas.filter(m => m.status === 'disponivel');
   const mesasOcupadas = mesas.filter(m => m.status === 'ocupada');
 
+  // ── Render ──
   return (
     <div className="space-y-6">
+      {/* Banner: resumo de mesas já abertas + atalho */}
       {comandasAbertas.length > 0 && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="p-4">
@@ -56,6 +72,7 @@ const SelecionarMesa = ({ mesas, onSelecionarMesa, comandasAbertas, onVerMesasAb
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
+            {/* Grade de mesas livres */}
             <div>
               <h3 className="font-medium text-green-700 mb-3 flex items-center gap-2">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -78,6 +95,7 @@ const SelecionarMesa = ({ mesas, onSelecionarMesa, comandasAbertas, onVerMesasAb
               )}
             </div>
 
+            {/* Grade de mesas ocupadas (entra no gerenciamento) */}
             <div>
               <h3 className="font-medium text-red-700 mb-3 flex items-center gap-2">
                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>

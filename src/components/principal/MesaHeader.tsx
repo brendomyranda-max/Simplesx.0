@@ -1,3 +1,14 @@
+/**
+ * ============================================================
+ * MesaHeader.tsx
+ * ============================================================
+ * PAPEL: Cabeçalho da tela de gerenciamento de comanda.
+ * QUEM USA: GerenciarComanda.tsx.
+ * O QUE FAZ:
+ *   - Mostra mesa atual, total de mesas abertas e total R$.
+ *   - Navegação: voltar à seleção ou trocar de mesa.
+ * ============================================================
+ */
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +25,7 @@ interface MesaHeaderProps {
 }
 
 const MesaHeader = ({ comanda, comandasAbertas, onVoltar, onVerMesasAbertas }: MesaHeaderProps) => {
+  // ── Render ──
   return (
     <div className="space-y-4">
       {/* Navegação entre mesas */}
@@ -41,6 +53,7 @@ const MesaHeader = ({ comanda, comandasAbertas, onVoltar, onVerMesasAbertas }: M
                 <Table className="h-4 w-4 mr-2" />
                 Selecionar Mesa
               </Button>
+              {/* Só mostra troca se houver mais de uma mesa aberta */}
               {comandasAbertas.length > 1 && (
                 <Button 
                   onClick={onVerMesasAbertas}
@@ -57,7 +70,7 @@ const MesaHeader = ({ comanda, comandasAbertas, onVoltar, onVerMesasAbertas }: M
         </CardContent>
       </Card>
 
-      {/* Informações da mesa */}
+      {/* Informações da mesa: pessoas, split e total */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-4">

@@ -1,3 +1,16 @@
+/**
+ * ============================================================
+ * GerarConta.tsx
+ * ============================================================
+ * PAPEL: Modal para pré-visualizar/imprimir a conta da mesa.
+ * QUEM USA: GerenciarComanda.tsx ("Gerar Conta").
+ * O QUE FAZ:
+ *   - Calcula subtotal, gorjeta (0–13%) e divisão da conta.
+ *   - Gera texto da conta e imprime ("Só Imprimir" ou "Gerar e Imprimir").
+ *   - Não fecha a mesa — apenas emite a conta para o cliente.
+ * ============================================================
+ */
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,17 +35,20 @@ interface GerarContaProps {
 }
 
 const GerarConta = ({ open, onOpenChange, comanda, onGerarConta }: GerarContaProps) => {
+  // ── Estado local ──
   const [porcentagemGarcom, setPorcentagemGarcom] = useState(10);
   const [tipoDivisao, setTipoDivisao] = useState<'igual' | 'personalizado'>('igual');
   const [numeroPessoas, setNumeroPessoas] = useState(comanda.pessoas);
   const [divisaoPersonalizada, setDivisaoPersonalizada] = useState<{ pessoa: string; valor: number }[]>([]);
   const { toast } = useToast();
 
+  // ── Totais derivados ──
   const valorTotal = comanda.itens.reduce((total, item) => total + (item.valor_unitario * item.quantidade), 0);
   const valorGorjeta = (valorTotal * porcentagemGarcom) / 100;
   const valorComGorjeta = valorTotal + valorGorjeta;
   const valorPorPessoa = valorComGorjeta / numeroPessoas;
 
+  // ── Handlers divisão personalizada ──
   const adicionarPessoa = () => {
     setDivisaoPersonalizada([
       ...divisaoPersonalizada, 
@@ -53,6 +69,7 @@ const GerarConta = ({ open, onOpenChange, comanda, onGerarConta }: GerarContaPro
   const totalPersonalizado = divisaoPersonalizada.reduce((acc, div) => acc + div.valor, 0);
   const diferenca = valorComGorjeta - totalPersonalizado;
 
+  /** Texto monoespaçado da conta (itens, gorjeta, divisão). */
   const gerarConteudoConta = (): string => {
     const dataHora = new Date().toLocaleString('pt-BR');
     let conteudo = `
@@ -126,6 +143,7 @@ DIVISÃO PERSONALIZADA:
     return conteudo;
   };
 
+  /** Imprime a conta na impressora configurada. */
   const imprimirConta = async () => {
     if (!temImpressoraConfigurada()) {
       toast({
@@ -159,6 +177,7 @@ DIVISÃO PERSONALIZADA:
     return sucesso;
   };
 
+  /** Notifica o pai e imprime (não fecha a mesa). */
   const handleConfirmar = async () => {
     onGerarConta(
       porcentagemGarcom,
@@ -168,6 +187,7 @@ DIVISÃO PERSONALIZADA:
     await imprimirConta();
   };
 
+  // ── Render ──
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

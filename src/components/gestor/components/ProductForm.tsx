@@ -1,3 +1,14 @@
+/**
+ * ============================================================
+ * ProductForm.tsx
+ * ============================================================
+ * PAPEL: Formulário presentacional de cadastro de produto.
+ * QUEM USA: CadastroProduto.tsx.
+ * O QUE FAZ:
+ *   - Campos nome, valor, CMV, categoria e comentários.
+ *   - Controlado: mudanças via onFormDataChange; submit via onSubmit.
+ * ============================================================
+ */
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
@@ -19,8 +30,10 @@ interface ProductFormProps {
 const ProductForm = ({ formData, categorias, onFormDataChange, onSubmit }: ProductFormProps) => {
   const { nome, valor, cmv, categoria, comentarios } = formData;
 
+  // ── Render ──
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {/* Nome do produto */}
       <div>
         <Label htmlFor="nome">Nome do Produto *</Label>
         <Input
@@ -32,6 +45,7 @@ const ProductForm = ({ formData, categorias, onFormDataChange, onSubmit }: Produ
         />
       </div>
 
+      {/* Preço de venda e custo (CMV) */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="valor" className="flex items-center gap-2">
@@ -66,6 +80,7 @@ const ProductForm = ({ formData, categorias, onFormDataChange, onSubmit }: Produ
         </div>
       </div>
 
+      {/* Categoria opcional (fallback "Sem categoria" no submit do pai) */}
       <div>
         <Label className="flex items-center gap-2">
           <Tag className="h-4 w-4" />
@@ -94,6 +109,7 @@ const ProductForm = ({ formData, categorias, onFormDataChange, onSubmit }: Produ
         </p>
       </div>
 
+      {/* Comentários automáticos (opções rápidas na comanda) */}
       <CommentsManager
         comentarios={comentarios}
         onComentariosChange={(novosComentarios) => onFormDataChange({ comentarios: novosComentarios })}
