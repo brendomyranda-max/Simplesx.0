@@ -382,3 +382,5 @@ A pasta `components/ui/` não é re-comentada linha a linha (é biblioteca de UI
 ## Resumo em uma frase
 
 **Index** decide a tela → **useRestaurantData** guarda o restaurante no browser → componentes **principal/** operam o salão → componentes **gestor/** administram o cardápio e o caixa → **impressao.ts + server/impressora.js** mandam o ticket para a impressora escolhida na interface.
+# Simplesx.0
+# Simplesx.0
